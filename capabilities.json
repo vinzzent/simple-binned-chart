@@ -1,0 +1,219 @@
+{
+  "dataRoles": [
+    {
+      "displayName": "Field to bin",
+      "name": "category",
+      "kind": "Grouping"
+    },
+    {
+      "displayName": "Value",
+      "name": "measure",
+      "kind": "Measure"
+    },
+    {
+      "displayName": "Tooltips",
+      "name": "tooltips",
+      "kind": "Measure"
+    }
+  ],
+  "dataViewMappings": [
+    {
+      "conditions": [
+        {
+          "category": {
+            "max": 1
+          },
+          "measure": {
+            "max": 1
+          }
+        }
+      ],
+      "categorical": {
+        "categories": {
+          "for": {
+            "in": "category"
+          }
+        },
+        "values": {
+          "select": [
+            {
+              "bind": {
+                "to": "measure"
+              }
+            },
+            {
+              "bind": {
+                "to": "tooltips"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "objects": {
+    "bins": {
+      "displayName": "Bins",
+      "properties": {
+        "binMode": {
+          "displayName": "Bin mode",
+          "type": {
+            "enumeration": [
+              {
+                "displayName": "Automatic",
+                "value": "automatic"
+              },
+              {
+                "displayName": "By count",
+                "value": "byCount"
+              },
+              {
+                "displayName": "By size",
+                "value": "bySize"
+              }
+            ]
+          }
+        },
+        "sampleSize": {
+          "displayName": "Sample size",
+          "type": {
+            "numeric": true
+          }
+        },
+        "numberOfBins": {
+          "displayName": "Number of bins",
+          "type": {
+            "numeric": true
+          }
+        },
+        "binSize": {
+          "displayName": "Bin size",
+          "type": {
+            "numeric": true
+          }
+        },
+        "xAxisLabelsType": {
+          "displayName": "Bin labels",
+          "type": {
+            "enumeration": [
+              {
+                "displayName": "Tick value",
+                "value": "tickValue"
+              },
+              {
+                "displayName": "Bin range",
+                "value": "binRange"
+              }
+            ]
+          }
+        }
+      }
+    },    
+    "bars": {
+      "displayName": "Bars",
+      "properties": {
+        "fill": {
+          "displayName": "Bar color",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        },
+        "showBarValues": {
+          "displayName": "Show bar value",
+          "type": {
+            "bool": true
+          }
+        },
+        "labelFontColor": {
+          "displayName": "Color",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        },
+        "labelFontFamily": {
+          "displayName": "Font Family",
+          "type": {
+            "formatting": {
+              "fontFamily": true
+            }
+          }
+        },
+        "labelFontSize": {
+          "displayName": "Font Size",
+          "type": {
+            "numeric": true
+          }
+        },
+        "labelFontBold": {
+          "displayName": "Font-Weight",
+          "type": {
+            "bool": true
+          }
+        },
+        "labelFontItalic": {
+          "displayName": "Font-Style",
+          "type": {
+            "bool": true
+          }
+        },
+        "labelDisplayUnits": {
+          "displayName": "Display units",
+          "type": {
+            "formatting": {
+              "labelDisplayUnits": true
+            }
+          }
+        },
+        "labelPrecision": {
+          "displayName": "Value decimal places",
+          "type": {
+            "numeric": true
+          }
+        }
+      }
+    },
+    "line": {
+      "displayName": "Line",
+      "properties": {
+        "showNormalCurve": {
+          "displayName": "Show normal curve",
+          "type": {
+            "bool": true
+          }
+        },
+        "curveColor": {
+          "displayName": "Curve color",
+          "type": {
+            "fill": {
+              "solid": {
+                "color": true
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "supportsHighlight": true,
+  "supportsLandingPage": true,
+  "supportsMultiVisualSelection": true,
+  "supportsKeyboardFocus": true,
+  "tooltips": {
+    "supportedTypes": {
+      "default": true,
+      "canvas": true
+    },
+    "roles": [
+      "tooltips"
+    ]
+  },
+  "privileges": []
+}
