@@ -60,7 +60,7 @@
           "type": {
             "enumeration": [
               {
-                "displayName": "Automatic",
+                "displayName": "By sample size",
                 "value": "automatic"
               },
               {
@@ -108,7 +108,7 @@
           }
         }
       }
-    },    
+    },
     "bars": {
       "displayName": "Bars",
       "properties": {
@@ -197,6 +197,12 @@
                 "color": true
               }
             }
+          }
+        },
+        "strokeWidth": {
+          "displayName": "Curve thickness",
+          "type": {
+            "numeric": true
           }
         }
       }

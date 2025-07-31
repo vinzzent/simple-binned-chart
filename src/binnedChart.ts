@@ -8,7 +8,7 @@ import powerbi from "powerbi-visuals-api";
 import { createTooltipServiceWrapper, ITooltipServiceWrapper } from "powerbi-visuals-utils-tooltiputils";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 import { valueFormatter, textMeasurementService as tms } from "powerbi-visuals-utils-formattingutils";
-import { BarChartSettingsModel } from "./barChartSettingsModel";
+import { BinnedChartSettingsModel } from "./binnedChartSettingsModel";
 
 import "./../style/visual.less";
 
@@ -21,6 +21,8 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import ISelectionId = powerbi.visuals.ISelectionId;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
+
+type Formatter = ReturnType<typeof valueFormatter.create>;
 
 // Interface for pairing original data points before binning
 interface PreBinnedDataPoint {
@@ -38,7 +40,13 @@ export interface BinnedDataPoint extends d3.Bin<PreBinnedDataPoint, number> {
     color: string;
 }
 
-export class BarChart implements IVisual {
+enum VisualState {
+    Landing,
+    Error,
+    Chart
+}
+
+export class BinnedChart implements IVisual {
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private host: IVisualHost;
     private barContainer: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -46,9 +54,9 @@ export class BarChart implements IVisual {
     private yAxis: d3.Selection<SVGGElement, unknown, null, undefined>;
     private dataLabelsContainer: d3.Selection<SVGGElement, unknown, null, undefined>;
     private curve: d3.Selection<SVGPathElement, unknown, null, undefined>;
-    private curveMarkersContainer: d3.Selection<SVGGElement, unknown, null, undefined>;    
+    private curveMarkersContainer: d3.Selection<SVGGElement, unknown, null, undefined>;
     private customXAxisLabels: d3.Selection<SVGGElement, unknown, null, undefined>;
-    private formattingSettings: BarChartSettingsModel;
+    private formattingSettings: BinnedChartSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
     private tooltipServiceWrapper: ITooltipServiceWrapper;
     private selectionManager: ISelectionManager;
@@ -56,6 +64,10 @@ export class BarChart implements IVisual {
     private LandingPage: d3.Selection<any, any, any, any>;
     private element: HTMLElement;
     private events: IVisualEventService;
+    private formatters?: {
+        forCategory: Formatter,
+        forMeasure: Formatter
+    };
 
     static Config = {
         solidOpacity: 1,
@@ -90,41 +102,81 @@ export class BarChart implements IVisual {
 
     public update(options: VisualUpdateOptions) {
         this.events.renderingStarted(options);
-
         const dataView = options.dataViews[0];
-        if (!dataView || !dataView.categorical || !dataView.categorical.categories?.[0] || !dataView.categorical.values?.[0]) {
-            this.showLandingPage();
-            this.events.renderingFinished(options);
-            return;
-        }
-
-        const categoryColumn = dataView.categorical.categories[0];
-        const valueColumn = dataView.categorical.values[0];
-
-        if (!categoryColumn.source.type.numeric) {
-            // If validation fails, display a specific error and halt execution.
-            this.displayValidationError("'Field to bin' must be a numeric field.");
-            this.events.renderingFinished(options);
-            return;
-        }
-
-        if (!valueColumn.source.type.numeric) {
-            // If validation fails, display a specific error and halt execution.
-            this.displayValidationError("'Value' must be a numeric measure.");
-            this.events.renderingFinished(options);
-            return;
-        }
-
-        this.hideLandingPage();
-
-        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(BarChartSettingsModel, dataView);
-        this.formattingSettings.updateAllSlices();
 
         const width = options.viewport.width;
         const height = options.viewport.height;
         this.svg.attr("width", width).attr("height", height);
 
-        const margins = BarChart.Config.margins;
+        // --- STATE DETERMINATION ---
+        // This block determines the single, correct state for the visual based on the dataView.
+        // This prevents race conditions and intermediate states from causing blank screens.
+        let currentState: VisualState;
+        let validationMessage: string = "";
+
+        const hasCategories = dataView?.categorical?.categories?.length > 0;
+        const hasValues = dataView?.categorical?.values?.length > 0;
+        const isCategoryNumeric = dataView?.categorical?.categories?.[0]?.source.type.numeric === true;
+
+        if (!hasCategories && !hasValues) {
+            currentState = VisualState.Landing;
+        } else if (!hasCategories || !isCategoryNumeric) {
+            currentState = VisualState.Error;
+            validationMessage = "'Field to bin' must be a numeric field.";
+        } else if (!hasValues) {
+            currentState = VisualState.Error;
+            validationMessage = "'Value' must be a numeric measure.";
+        } else {
+            currentState = VisualState.Chart;
+        }
+
+        // --- STATE RENDERER ---
+        // This switch statement acts on the determined state, ensuring only one
+        // rendering path is executed per update cycle.
+        switch (currentState) {
+            case VisualState.Landing:
+                this.svg.classed("hidden", true);
+                this.clearVisual();
+                this.showLandingPage();
+                console.log("Landing page");
+                break;
+
+            case VisualState.Error:
+                this.svg.classed("hidden", false);
+                this.hideLandingPage();
+                this.clearVisual();
+                this.displayValidationError(validationMessage);
+                console.log("Error message");
+                break;
+
+            case VisualState.Chart:
+                this.svg.classed("hidden", false);
+                this.hideLandingPage();
+                this.svg.select(".validation-error").remove(); // Clear any previous error messages
+
+                console.log("Chart display");
+                this.formatters = {
+                    forCategory: valueFormatter.create({
+                      format: dataView.categorical.categories[0].source.format,
+                    }),
+                    forMeasure: valueFormatter.create({
+                      format: dataView.categorical.values[0].source.format,
+                    }),
+                };
+
+                this.renderChart(dataView, width, height);
+                break;
+        }
+
+        this.events.renderingFinished(options);
+    } 
+
+    private renderChart(dataView: powerbi.DataView, width: number, height: number) {
+        // This function encapsulates all logic for processing data and drawing the chart.
+        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(BinnedChartSettingsModel, dataView);
+        this.formattingSettings.updateAllSlices();
+
+        const margins = BinnedChart.Config.margins;
 
         const preBinnedData: PreBinnedDataPoint[] = [];
         const categories = dataView.categorical.categories[0];
@@ -144,10 +196,10 @@ export class BarChart implements IVisual {
             }
         }
 
-        if (preBinnedData.length < 2) {
+        // This check handles cases where data is valid but insufficient to draw a chart.
+        if (preBinnedData.length < 1) {
             this.clearVisual();
-            this.events.renderingFinished(options);
-            return;
+            return; // Use return to exit the function.
         }
 
         const dataDomain: [number, number] = [
@@ -155,8 +207,7 @@ export class BarChart implements IVisual {
             d3.max(preBinnedData, d => d.binValue) as number
         ];
 
-        // --- LOGIC IMPLEMENTED HERE ---        
-        let binSize: number
+        let binSize: number;
         const binMode = this.formattingSettings.bins.binMode.value;
 
         if (binMode === "bySize") {
@@ -164,7 +215,6 @@ export class BarChart implements IVisual {
         } else { // Handles 'automatic' and 'byCount'
             let numBins: number;
             if (binMode === "automatic") {
-                // Sturges’ Rule: bins = 1 + log2(N)
                 const sampleSize = this.formattingSettings.bins.sampleSize.value;
                 numBins = Math.max(1, Math.ceil(Math.log2(sampleSize) + 1));
             } else { // 'byCount'
@@ -176,7 +226,7 @@ export class BarChart implements IVisual {
         const alignedMin = Math.floor(dataDomain[0] / binSize) * binSize;
         const alignedMax = Math.ceil(dataDomain[1] / binSize) * binSize;
         const thresholds = d3.range(alignedMin, alignedMax, binSize);
-        const alignedMaxCorr = thresholds[thresholds.length - 1] + binSize;
+        const alignedMaxCorr = thresholds.length > 0 ? thresholds[thresholds.length - 1] + binSize : alignedMin + binSize;
         const niceDomain: [number, number] = [alignedMin, alignedMaxCorr];
         const niceXScale = d3.scaleLinear().domain(niceDomain);
 
@@ -185,17 +235,20 @@ export class BarChart implements IVisual {
             .domain(niceDomain)
             .thresholds(thresholds);
 
+        //const valueFormatterForMeasure = valueFormatter.create({ format: values.source.format });
+        //const valueFormatterForCategory = valueFormatter.create({ format: categories.source.format });
+
         const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin: d3.Bin<PreBinnedDataPoint, number>) => {
             const aggregatedValue = d3.sum(bin, d => d.measureValue);
             const selectionIds = bin.map(d => d.selectionId);
 
-            const valueFormatterForMeasure = valueFormatter.create({ format: values.source.format });
             const currentBinSize = (bin.x1 ?? 0) - (bin.x0 ?? 0);
-            const binRange = `${valueFormatter.format(bin.x0, "0.##")} - ${valueFormatter.format(bin.x1, "0.##")}`;
+            //const binRange = `${valueFormatter.format(bin.x0, "0.##")} - ${valueFormatter.format(bin.x1, "0.##")}`;
+            const binRange = `${this.formatters.forCategory.format(bin.x0)} - ${this.formatters.forCategory.format(bin.x1)}`;
             let tooltips: VisualTooltipDataItem[] = [
-                { displayName: "Bin range", value: binRange }, // This line was added
+                { displayName: "Bin range", value: binRange },
                 { displayName: "Bin size", value: valueFormatter.format(currentBinSize, "0.##") },
-                { displayName: values.source.displayName, value: valueFormatterForMeasure.format(aggregatedValue) },
+                { displayName: values.source.displayName, value: this.formatters.forMeasure.format(aggregatedValue) },
             ];
 
             if (tooltipData) {
@@ -224,8 +277,7 @@ export class BarChart implements IVisual {
         this.barContainer.attr("transform", `translate(${margins.left}, ${margins.top})`);
 
         const yMax = d3.max(bins, d => d.aggregatedValue) ?? 0;
-        const yScaleDomainMax = this.formattingSettings.bars.showBarValues.value ? yMax * BarChart.Config.yMaxMultiplier : yMax;
-
+        const yScaleDomainMax = this.formattingSettings.bars.showBarValues.value ? yMax * BinnedChart.Config.yMaxMultiplier : yMax;
         const yScale = d3.scaleLinear().range([heightWithMargin, 0]).domain([0, yScaleDomainMax]);
 
         this.renderBars(bins, xScale, yScale, heightWithMargin);
@@ -237,15 +289,14 @@ export class BarChart implements IVisual {
         }
 
         const yAxis = d3.axisLeft(yScale);
-
         this.yAxis
             .attr("transform", `translate(${margins.left}, ${margins.top})`)
             .call(yAxis);
 
         if (this.formattingSettings.bins.xAxisLabelsType.value === "tickValue") {
             this.customXAxisLabels.selectAll("*").remove();
-            const tickValues = bins.map(d => d.x0).concat(bins[bins.length - 1].x1 ?? 0);
-            const xAxis = d3.axisBottom(xScale).tickValues(tickValues as number[]);
+            const tickValues = bins.length > 0 ? bins.map(d => d.x0).concat(bins[bins.length - 1].x1 ?? 0) : [];
+            const xAxis = d3.axisBottom(xScale).tickValues(tickValues as number[]).tickFormat(d => this.formatters.forCategory.format(d));
             this.xAxis
                 .attr("transform", `translate(${margins.left}, ${heightWithMargin + margins.top})`)
                 .call(xAxis);
@@ -259,8 +310,6 @@ export class BarChart implements IVisual {
         } else {
             this.curve.attr("d", null);
         }
-
-        this.events.renderingFinished(options);
     }
 
     private renderBars(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>, heightWithMargin: number) {
@@ -360,7 +409,7 @@ export class BarChart implements IVisual {
         this.svg.on("click", () => {
             if (allowInteractions) {
                 selectionManager.clear().then(() => {
-                    bars.style("fill-opacity", BarChart.Config.solidOpacity);
+                    bars.style("fill-opacity", BinnedChart.Config.solidOpacity);
                 });
             }
         });
@@ -368,11 +417,12 @@ export class BarChart implements IVisual {
 
     private calculateLabelSettings(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>) {
         let useVerticalLabels = false;
-        let bottomMargin = BarChart.Config.margins.bottom;
+        let bottomMargin = BinnedChart.Config.margins.bottom;
 
         const isBinRange = this.formattingSettings.bins.xAxisLabelsType.value === "binRange";
         if (isBinRange) {
-            const labels = bins.map(bin => `${valueFormatter.format(bin.x0, "0.##")} - ${valueFormatter.format(bin.x1, "0.##")}`);
+            //const labels = bins.map(bin => `${valueFormatter.format(bin.x0, "0.##")} - ${valueFormatter.format(bin.x1, "0.##")}`);
+            const labels = bins.map(bin => `${this.formatters.forCategory.format(bin.x0)} - ${this.formatters.forCategory.format(bin.x1)}`);
 
             const horizontalLabelWidths = labels.map(label => tms.measureSvgTextWidth({ text: label, fontFamily: "sans-serif", fontSize: "11px" }));
             const totalHorizontalWidth = d3.sum(horizontalLabelWidths);
@@ -382,7 +432,7 @@ export class BarChart implements IVisual {
             }
 
             if (useVerticalLabels) {
-                const maxVerticalHeight = d3.max(labels, label => (label?.length ?? 0)) * BarChart.Config.labelCharHeight;
+                const maxVerticalHeight = d3.max(labels, label => (label?.length ?? 0)) * BinnedChart.Config.labelCharHeight;
                 bottomMargin += maxVerticalHeight
             }
         }
@@ -390,7 +440,7 @@ export class BarChart implements IVisual {
     }
 
     private renderCustomXAxisLabels(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, topPosition: number, useVertical: boolean) {
-        this.customXAxisLabels.attr("transform", `translate(${BarChart.Config.margins.left}, ${topPosition})`);
+        this.customXAxisLabels.attr("transform", `translate(${BinnedChart.Config.margins.left}, ${topPosition})`);
         const labels = this.customXAxisLabels.selectAll("text").data(bins);
 
         labels.enter()
@@ -402,7 +452,8 @@ export class BarChart implements IVisual {
                 const xPos = xScale(d.x0!) + (xScale(d.x1!) - xScale(d.x0!)) / 2;
                 return useVertical ? `translate(${xPos}, 10) rotate(-90)` : `translate(${xPos}, 20)`;
             })
-            .text((d: BinnedDataPoint) => `${valueFormatter.format(d.x0, "0.##")} - ${valueFormatter.format(d.x1, "0.##")}`);
+            //.text((d: BinnedDataPoint) => `${valueFormatter.format(d.x0, "0.##")} - ${valueFormatter.format(d.x1, "0.##")}`);
+            .text((d: BinnedDataPoint) => `${this.formatters.forCategory.format(d.x0)} - ${this.formatters.forCategory.format(d.x1)}`);
 
         labels.exit().remove();
     }
@@ -440,7 +491,7 @@ export class BarChart implements IVisual {
             .attr("d", line)
             .style("fill", "none")
             .style("stroke", this.formattingSettings.line.curveColor.value.value)
-            .style("stroke-width", 2);
+            .style("stroke-width", this.formattingSettings.line.strokeWidth.value);
 
         this.curve.raise();
 
@@ -489,10 +540,6 @@ export class BarChart implements IVisual {
     }
 
     private displayValidationError(message: string) {
-        // First, clear any existing elements from the visual.
-        this.clearVisual();
-        this.hideLandingPage();
-
         const width = this.element.clientWidth;
         const height = this.element.clientHeight;
 
@@ -509,16 +556,23 @@ export class BarChart implements IVisual {
     }
 
     private showLandingPage() {
+        console.log("showLandingPage called. isLandingPageOn is:", this.isLandingPageOn);
         if (!this.isLandingPageOn) {
             this.isLandingPageOn = true;
-            this.clearVisual();
+            //this.clearVisual();
             const landingPageElement = createLandingPage();
             this.element.appendChild(landingPageElement);
             this.LandingPage = d3Select(landingPageElement);
         }
+        console.log("showLandingPage called after. isLandingPageOn is:", this.isLandingPageOn);
     }
 
     private clearVisual() {
+        const svgNode = this.svg.node();
+        if (svgNode && svgNode.contains(document.activeElement)) {
+            (this.element as HTMLElement).focus();
+        }
+        this.svg.select(".validation-error").remove();
         this.barContainer.selectAll("*").remove();
         this.xAxis.selectAll("*").remove();
         this.yAxis.selectAll("*").remove();
@@ -532,6 +586,10 @@ export class BarChart implements IVisual {
         if (this.isLandingPageOn) {
             this.isLandingPageOn = false;
             if (this.LandingPage) {
+                const landingPageNode = this.LandingPage.node();
+                if (landingPageNode && landingPageNode.contains(document.activeElement)) {
+                    (this.element as HTMLElement).focus();
+                }
                 this.LandingPage.remove();
             }
         }
@@ -540,7 +598,7 @@ export class BarChart implements IVisual {
     private renderDataLabels(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>, format: string) {
         const barsSettings = this.formattingSettings.bars;
 
-        this.dataLabelsContainer.attr("transform", `translate(${BarChart.Config.margins.left}, ${BarChart.Config.margins.top})`);
+        this.dataLabelsContainer.attr("transform", `translate(${BinnedChart.Config.margins.left}, ${BinnedChart.Config.margins.top})`);
 
         const dataLabelFormatter = valueFormatter.create({
             format: format,
@@ -567,7 +625,7 @@ export class BarChart implements IVisual {
             .text((d: BinnedDataPoint) => dataLabelFormatter.format(d.aggregatedValue));
 
         labels.exit().remove();
-    }    
+    }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
@@ -582,9 +640,9 @@ function syncSelectionState(selection: d3.Selection<d3.BaseType, BinnedDataPoint
     selection.style("fill-opacity", (d: BinnedDataPoint) => {
         const isSelected = d.selectionIds.some(binId => selectionIds.some(selectedId => selectedId.includes(binId)));
         if (selectionIds.length > 0) {
-            return isSelected ? BarChart.Config.solidOpacity : BarChart.Config.transparentOpacity;
+            return isSelected ? BinnedChart.Config.solidOpacity : BinnedChart.Config.transparentOpacity;
         }
-        return BarChart.Config.solidOpacity;
+        return BinnedChart.Config.solidOpacity;
     });
 }
 

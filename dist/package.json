@@ -8,7 +8,7 @@
 				"file": "resources/PBI_CV_9894B302_1DFF_4A96_ABFE_BF8588197166.pbiviz.json"
 			}
 		],
-		"visual": {"name":"Binned Chart","displayName":"Simple Binned Chart","guid":"PBI_CV_9894B302_1DFF_4A96_ABFE_BF8588197166","visualClassName":"BarChart","version":"1.0.0.0","description":"A simple binned chart","supportUrl":"pbicvsupport@microsoft.com","gitHubUrl":""},
+		"visual": {"name":"Binned Chart","displayName":"Simple Binned Chart","guid":"PBI_CV_9894B302_1DFF_4A96_ABFE_BF8588197166","visualClassName":"BinnedChart","version":"1.0.0.0","description":"A simple binned chart","supportUrl":"pbicvsupport@microsoft.com","gitHubUrl":""},
 		"metadata": {
 			"pbivizjson": {
 				"resourceId": "rId0"

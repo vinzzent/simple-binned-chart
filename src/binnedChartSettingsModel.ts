@@ -169,19 +169,37 @@ class LineSettingsCard extends Card {
         value: { value: "#E66C37" }
     });
 
-    slices: Slice[] = [this.showNormalCurve, this.curveColor];
+    // Added a numeric up-down control for line thickness.
+    strokeWidth = new NumUpDown({
+        name: "strokeWidth",
+        displayName: "Curve thickness",
+        value: 2,
+        options: {
+            minValue: { type: powerbi.visuals.ValidatorType.Min, value: 1 },
+            maxValue: { type: powerbi.visuals.ValidatorType.Max, value: 10 }
+        }
+    });
+
+
+    slices: Slice[] = [this.showNormalCurve, this.curveColor, this.strokeWidth];
+
+    public updateSlices() {
+        const showCurve = this.showNormalCurve.value;
+        this.curveColor.visible = showCurve;
+        this.strokeWidth.visible = showCurve;
+    }
 }
 
-// MODEL that includes all three groups
-export class BarChartSettingsModel extends Model {
+export class BinnedChartSettingsModel extends Model {
     bins = new BinsSettingsCard();
     bars = new BarsSettingsCard();
-    line = new LineSettingsCard();    
+    line = new LineSettingsCard();
 
     cards: Card[] = [this.bins, this.bars, this.line];
 
     public updateAllSlices() {
         this.bins.updateSlices();
-        this.bars.updateSlices();        
+        this.bars.updateSlices();
+        this.line.updateSlices();
     }
 }
