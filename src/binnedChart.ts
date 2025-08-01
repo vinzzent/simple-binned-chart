@@ -72,7 +72,7 @@ export class BinnedChart implements IVisual {
     static Config = {
         solidOpacity: 1,
         transparentOpacity: 0.4,
-        margins: { top: 20, right: 30, bottom: 25, left: 50, },
+        margins: { top: 30, right: 30, bottom: 30, left: 50, },
         labelCharHeight: 10,
         yMaxMultiplier: 1.1,
     };
@@ -157,10 +157,10 @@ export class BinnedChart implements IVisual {
                 console.log("Chart display");
                 this.formatters = {
                     forCategory: valueFormatter.create({
-                      format: dataView.categorical.categories[0].source.format,
+                        format: dataView.categorical.categories[0].source.format,
                     }),
                     forMeasure: valueFormatter.create({
-                      format: dataView.categorical.values[0].source.format,
+                        format: dataView.categorical.values[0].source.format,
                     }),
                 };
 
@@ -169,7 +169,7 @@ export class BinnedChart implements IVisual {
         }
 
         this.events.renderingFinished(options);
-    } 
+    }
 
     private renderChart(dataView: powerbi.DataView, width: number, height: number) {
         // This function encapsulates all logic for processing data and drawing the chart.
@@ -247,7 +247,7 @@ export class BinnedChart implements IVisual {
             const binRange = `${this.formatters.forCategory.format(bin.x0)} - ${this.formatters.forCategory.format(bin.x1)}`;
             let tooltips: VisualTooltipDataItem[] = [
                 { displayName: "Bin range", value: binRange },
-                { displayName: "Bin size", value: valueFormatter.format(currentBinSize, "0.##") },
+                { displayName: "Bin size", value: valueFormatter.format(currentBinSize, "0.###") },
                 { displayName: values.source.displayName, value: this.formatters.forMeasure.format(aggregatedValue) },
             ];
 
@@ -278,7 +278,7 @@ export class BinnedChart implements IVisual {
 
         const yMax = d3.max(bins, d => d.aggregatedValue) ?? 0;
         const yScaleDomainMax = this.formattingSettings.bars.showBarValues.value ? yMax * BinnedChart.Config.yMaxMultiplier : yMax;
-        const yScale = d3.scaleLinear().range([heightWithMargin, 0]).domain([0, yScaleDomainMax]);
+        const yScale = d3.scaleLinear().range([heightWithMargin, 0]).domain([0, yScaleDomainMax]).nice();
 
         this.renderBars(bins, xScale, yScale, heightWithMargin);
 
@@ -292,6 +292,15 @@ export class BinnedChart implements IVisual {
         this.yAxis
             .attr("transform", `translate(${margins.left}, ${margins.top})`)
             .call(yAxis);
+        // START: Apply Y-axis font settings
+        const yTickFontSettings = this.formattingSettings.bars.yTickFont;
+        this.yAxis.selectAll("text")
+            .style("font-family", yTickFontSettings.fontFamily.value)
+            .style("font-size", `${yTickFontSettings.fontSize.value}px`)
+            .style("font-weight", yTickFontSettings.bold.value ? "bold" : "normal")
+            .style("font-style", yTickFontSettings.italic.value ? "italic" : "normal")
+            .style("fill", "#333"); // Default color
+        // END: Apply Y-axis font settings
 
         if (this.formattingSettings.bins.xAxisLabelsType.value === "tickValue") {
             this.customXAxisLabels.selectAll("*").remove();
@@ -300,6 +309,15 @@ export class BinnedChart implements IVisual {
             this.xAxis
                 .attr("transform", `translate(${margins.left}, ${heightWithMargin + margins.top})`)
                 .call(xAxis);
+            // START: Apply X-axis tick font settings
+            const xTickFontSettings = this.formattingSettings.bins.binLabelFont;
+            this.xAxis.selectAll("text")
+                .style("font-family", xTickFontSettings.fontFamily.value)
+                .style("font-size", `${xTickFontSettings.fontSize.value}px`)
+                .style("font-weight", xTickFontSettings.bold.value ? "bold" : "normal")
+                .style("font-style", xTickFontSettings.italic.value ? "italic" : "normal")
+                .style("fill", "#333");
+            // END: Apply X-axis tick font settings
         } else {
             this.xAxis.selectAll("*").remove();
             this.renderCustomXAxisLabels(bins, xScale, heightWithMargin + margins.top, useVerticalLabels);
@@ -432,7 +450,7 @@ export class BinnedChart implements IVisual {
             }
 
             if (useVerticalLabels) {
-                const maxVerticalHeight = d3.max(labels, label => (label?.length ?? 0)) * BinnedChart.Config.labelCharHeight;
+                const maxVerticalHeight = d3.max(labels, label => (label?.length ?? 0)) * BinnedChart.Config.labelCharHeight * 0.8;
                 bottomMargin += maxVerticalHeight
             }
         }
@@ -443,6 +461,8 @@ export class BinnedChart implements IVisual {
         this.customXAxisLabels.attr("transform", `translate(${BinnedChart.Config.margins.left}, ${topPosition})`);
         const labels = this.customXAxisLabels.selectAll("text").data(bins);
 
+        // START: Apply custom X-axis label font settings
+        const customLabelFontSettings = this.formattingSettings.bins.binLabelFont;
         labels.enter()
             .append("text")
             .merge(labels as any)
@@ -452,8 +472,13 @@ export class BinnedChart implements IVisual {
                 const xPos = xScale(d.x0!) + (xScale(d.x1!) - xScale(d.x0!)) / 2;
                 return useVertical ? `translate(${xPos}, 10) rotate(-90)` : `translate(${xPos}, 20)`;
             })
-            //.text((d: BinnedDataPoint) => `${valueFormatter.format(d.x0, "0.##")} - ${valueFormatter.format(d.x1, "0.##")}`);
-            .text((d: BinnedDataPoint) => `${this.formatters.forCategory.format(d.x0)} - ${this.formatters.forCategory.format(d.x1)}`);
+            .text((d: BinnedDataPoint) => `${this.formatters.forCategory.format(d.x0)} - ${this.formatters.forCategory.format(d.x1)}`)
+            .style("font-family", customLabelFontSettings.fontFamily.value)
+            .style("font-size", `${customLabelFontSettings.fontSize.value}px`)
+            .style("font-weight", customLabelFontSettings.bold.value ? "bold" : "normal")
+            .style("font-style", customLabelFontSettings.italic.value ? "italic" : "normal")
+            .style("fill", "#333");
+        // END: Apply custom X-axis label font settings
 
         labels.exit().remove();
     }
@@ -494,6 +519,7 @@ export class BinnedChart implements IVisual {
             .style("stroke-width", this.formattingSettings.line.strokeWidth.value);
 
         this.curve.raise();
+        this.curveMarkersContainer.raise();
 
         this.curveMarkersContainer.attr("transform", `translate(${margins.left}, ${margins.top})`);
 
@@ -508,7 +534,7 @@ export class BinnedChart implements IVisual {
             .attr("r", 5) // Set a reasonable radius for hovering
             .style("fill", "transparent");
 
-        const valueFormatterForTooltip = valueFormatter.create({ format: "0.##" });
+        //const valueFormatterForTooltip = valueFormatter.create({ format: "0.##" });
 
         // Add the tooltip to the selection of invisible markers
         this.tooltipServiceWrapper.addTooltip(
@@ -517,9 +543,9 @@ export class BinnedChart implements IVisual {
                 const expectedValue = d.y;
 
                 return [
-                    { displayName: "Mean", value: valueFormatterForTooltip.format(mean) },
-                    { displayName: "Standard Deviation", value: valueFormatterForTooltip.format(stdDev) },
-                    { displayName: "Expected Value", value: valueFormatterForTooltip.format(expectedValue) }
+                    { displayName: "Mean", value: this.formatters.forMeasure.format(mean) },
+                    { displayName: "Standard Deviation", value: this.formatters.forMeasure.format(stdDev) },
+                    { displayName: "Expected Value", value: this.formatters.forMeasure.format(expectedValue) }
                 ];
             }
         );

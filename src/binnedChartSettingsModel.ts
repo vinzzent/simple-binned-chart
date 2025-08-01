@@ -14,7 +14,7 @@ import FontControl = formattingSettings.FontControl;
 class BinsSettingsCard extends Card {
     name = "bins";
     displayName = "Bins";
-
+    // START: New bin label font settings
     binMode = new AutoDropdown({
         name: "binMode",
         displayName: "Bin mode",
@@ -54,8 +54,36 @@ class BinsSettingsCard extends Card {
         displayName: "Tick value",
         value: "tickValue"
     });
-
-    slices: Slice[] = [this.binMode, this.sampleSize, this.numberOfBins, this.binSize, this.xAxisLabelsType];
+    binLabelFont = new FontControl({
+        name: "binLabelFont",
+        displayName: "Font",
+        fontFamily: new formattingSettings.FontPicker({
+            name: "binLabelFontFamily",
+            displayName: "Font Family",
+            value: "sans-serif"
+        }),
+        fontSize: new formattingSettings.NumUpDown({
+            name: "binLabelFontSize",
+            displayName: "Font Size",
+            value: 11,
+            options: {
+                minValue: { type: powerbi.visuals.ValidatorType.Min, value: 8 },
+                maxValue: { type: powerbi.visuals.ValidatorType.Max, value: 40 }
+            }
+        }),
+        bold: new formattingSettings.ToggleSwitch({
+            name: "binLabelFontBold",
+            displayName: "Bold",
+            value: false
+        }),
+        italic: new formattingSettings.ToggleSwitch({
+            name: "binLabelFontItalic",
+            displayName: "Italic",
+            value: false
+        })
+    });
+    // END: New bin label font settings
+    slices: Slice[] = [this.binMode, this.sampleSize, this.numberOfBins, this.binSize, this.xAxisLabelsType, this.binLabelFont];
 
     public updateSlices() {
         this.sampleSize.visible = this.binMode.value === "automatic";
@@ -74,7 +102,34 @@ class BarsSettingsCard extends Card {
         displayName: "Bar color",
         value: { value: "#01B8AA" }
     });
-
+    yTickFont = new FontControl({
+        name: "yTickFont",
+        displayName: "Y tick font",
+        fontFamily: new formattingSettings.FontPicker({
+            name: "yTickFontFamily",
+            displayName: "Font Family",
+            value: "sans-serif"
+        }),
+        fontSize: new formattingSettings.NumUpDown({
+            name: "yTickFontSize",
+            displayName: "Font Size",
+            value: 11,
+            options: {
+                minValue: { type: powerbi.visuals.ValidatorType.Min, value: 8 },
+                maxValue: { type: powerbi.visuals.ValidatorType.Max, value: 40 }
+            }
+        }),
+        bold: new formattingSettings.ToggleSwitch({
+            name: "yTickFontBold",
+            displayName: "Bold",
+            value: false
+        }),
+        italic: new formattingSettings.ToggleSwitch({
+            name: "yTickFontItalic",
+            displayName: "Italic",
+            value: false
+        })
+    });
     showBarValues = new ToggleSwitch({
         name: "showBarValues",
         displayName: "Show bar value",
@@ -135,6 +190,7 @@ class BarsSettingsCard extends Card {
 
     slices: Slice[] = [
         this.fill,
+        this.yTickFont, // Added here
         this.showBarValues,
         this.labelFontColor,
         this.labelFont,
