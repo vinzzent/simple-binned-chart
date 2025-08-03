@@ -24,6 +24,13 @@ import IVisualEventService = powerbi.extensibility.IVisualEventService;
 
 type Formatter = ReturnType<typeof valueFormatter.create>;
 
+interface Margins {
+    top: number;
+    right?: number;
+    bottom?: number;
+    left: number;
+}
+
 // Interface for pairing original data points before binning
 interface PreBinnedDataPoint {
     binValue: number;
@@ -47,6 +54,9 @@ enum VisualState {
 }
 
 export class BinnedChart implements IVisual {
+    private observer: IntersectionObserver;
+    private lastUpdateOptions?: VisualUpdateOptions;
+    private isVisible: boolean = false;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private host: IVisualHost;
     private barContainer: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -64,6 +74,9 @@ export class BinnedChart implements IVisual {
     private LandingPage: d3.Selection<any, any, any, any>;
     private element: HTMLElement;
     private events: IVisualEventService;
+    private categories?: powerbi.DataViewCategoryColumn;
+    private values?: powerbi.DataViewValueColumn;
+    private tooltipData?: powerbi.DataViewValueColumn;
     private formatters?: {
         forCategory: Formatter,
         forMeasure: Formatter,
@@ -99,9 +112,27 @@ export class BinnedChart implements IVisual {
         this.formattingSettingsService = new FormattingSettingsService(localizationManager);
         this.barContainer = this.svg.append("g").classed("barContainer", true).attr("role", "list");
         this.handleContextMenu();
+
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !this.isVisible) {
+                    this.isVisible = true;
+                    if (this.lastUpdateOptions) {
+                        console.log("Visual became visible. Forcing update.");
+                        this.update(this.lastUpdateOptions);
+                    }
+                } else if (!entry.isIntersecting) {
+                    this.isVisible = false;
+                }
+            });
+        }, { threshold: 0 });
+        this.observer.observe(this.element);              
     }
 
+
     public update(options: VisualUpdateOptions) {
+        this.lastUpdateOptions = options;
+        console.log("update started with options:", options);
         this.events.renderingStarted(options);
         const dataView = options.dataViews[0];
 
@@ -115,9 +146,15 @@ export class BinnedChart implements IVisual {
         let currentState: VisualState;
         let validationMessage: string = "";
 
-        const hasCategories = dataView?.categorical?.categories?.length > 0;
-        const hasValues = dataView?.categorical?.values?.length > 0;
-        const isCategoryNumeric = dataView?.categorical?.categories?.[0]?.source.type.numeric === true;
+        const categorical = dataView?.categorical;
+        this.categories = categorical?.categories?.[0];
+        this.values = categorical?.values?.find(val => val.source.roles?.measure);
+        this.tooltipData = categorical?.values?.find(val => val.source.roles?.tooltips);
+
+        const hasCategories = !!this.categories;
+        const hasValues = !!this.values;
+        const isCategoryNumeric = this.categories?.source.type.numeric === true;
+
 
         if (!hasCategories && !hasValues) {
             currentState = VisualState.Landing;
@@ -158,13 +195,13 @@ export class BinnedChart implements IVisual {
                 console.log("Chart display");
                 this.formatters = {
                     forCategory: valueFormatter.create({
-                        format: dataView.categorical.categories[0]?.source.format,
+                        format: this.categories?.source.format,
                     }),
                     forMeasure: valueFormatter.create({
-                        format: dataView.categorical.values.find(val => val.source.roles?.measure)?.source.format,
+                        format: this.values?.source.format,
                     }),
                     forExtraTooltip: valueFormatter.create({
-                        format: dataView.categorical.values.find(val => val.source.roles?.tooltips)?.source.format,
+                        format: this.tooltipData?.source.format,
                     }),
                 };
 
@@ -183,9 +220,9 @@ export class BinnedChart implements IVisual {
         const margins = BinnedChart.Config.margins;
 
         const preBinnedData: PreBinnedDataPoint[] = [];
-        const categories = dataView.categorical.categories?.[0];
-        const values = dataView.categorical.values.find(val => val.source.roles?.measure);
-        const tooltipData = dataView.categorical.values.find(val => val.source.roles?.tooltips);
+        const categories = this.categories;
+        const values = this.values;
+        const tooltipData = this.tooltipData;
 
         for (let i = 0; i < categories.values.length; i++) {
             const binValue = categories.values[i] as number;
@@ -239,15 +276,18 @@ export class BinnedChart implements IVisual {
             .domain(niceDomain)
             .thresholds(thresholds);
 
-        const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin: d3.Bin<PreBinnedDataPoint, number>) => {
+        const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin) => {
             const aggregatedValue = d3.sum(bin, d => d.measureValue);
             const selectionIds = bin.map(d => d.selectionId);
 
-            const currentBinSize = (bin.x1 ?? 0) - (bin.x0 ?? 0);
-            const binRange = `${this.formatters.forCategory.format(bin.x0)} - ${this.formatters.forCategory.format(bin.x1)}`;
-            let tooltips: VisualTooltipDataItem[] = [
+            const binX0 = bin.x0 ?? 0;
+            const binX1 = bin.x1 ?? 0;
+            const currentBinSize = binX1 - binX0;
+            const binRange = `${this.formatters.forCategory.format(binX0)} - ${this.formatters.forCategory.format(binX1)}`;
+
+            const tooltips: VisualTooltipDataItem[] = [
                 { displayName: "Bin range", value: binRange },
-                { displayName: "Bin size", value: valueFormatter.format(currentBinSize, "0.###") },
+                { displayName: "Bin size", value: this.formatters.forCategory.format(currentBinSize) },
                 { displayName: values.source.displayName, value: this.formatters.forMeasure.format(aggregatedValue) },
             ];
 
@@ -255,16 +295,22 @@ export class BinnedChart implements IVisual {
                 const aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
                 tooltips.push({
                     displayName: tooltipData.source.displayName,
-                    value: this.formatters.forExtraTooltip.format(aggregatedTooltipValue)
+                    value: this.formatters.forExtraTooltip.format(aggregatedTooltipValue),
                 });
             }
 
-            return Object.assign(bin, {
-                aggregatedValue,
-                selectionIds,
-                tooltips,
-                color: this.host.colorPalette.isHighContrast ? this.host.colorPalette.foreground.value : this.formattingSettings.bars.fill.value.value
-            });
+            const color = this.host.colorPalette.isHighContrast
+                ? this.host.colorPalette.foreground.value
+                : this.formattingSettings.bars.fill.value.value;
+
+            // Safely add new properties and cast to BinnedDataPoint
+            const extendedBin = bin as BinnedDataPoint;
+            extendedBin.aggregatedValue = aggregatedValue;
+            extendedBin.selectionIds = selectionIds;
+            extendedBin.tooltips = tooltips;
+            extendedBin.color = color;
+
+            return extendedBin;
         });
 
         const widthWithMargin = width - margins.left - margins.right;
@@ -328,7 +374,7 @@ export class BinnedChart implements IVisual {
     private renderBars(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>, heightWithMargin: number) {
         const bars = this.barContainer.selectAll("rect").data(bins);
 
-        const valueFormatterForAria = valueFormatter.create({ format: "0.###" });
+        //const valueFormatterForAria = valueFormatter.create({ format: "0.###" });
         bars.enter()
             .append("rect")
             .merge(bars as any)
@@ -338,7 +384,7 @@ export class BinnedChart implements IVisual {
             .attr("height", (d: BinnedDataPoint) => heightWithMargin - yScale(d.aggregatedValue))
             .attr("tabindex", 0)
             .attr("role", "listitem")
-            .attr("aria-label", (d: BinnedDataPoint) => `Bin from ${valueFormatterForAria.format(d.x0)} to ${valueFormatterForAria.format(d.x1)}: value ${valueFormatterForAria.format(d.aggregatedValue)}`)
+            .attr("aria-label", (d: BinnedDataPoint) => `Bin from ${this.formatters.forCategory.format(d.x0)} to ${this.formatters.forCategory.format(d.x1)}: value ${this.formatters.forMeasure.format(d.aggregatedValue)}`)
             .style("fill", (d: BinnedDataPoint) => d.color)
             .style("stroke", this.host.colorPalette.isHighContrast ? this.host.colorPalette.background.value : null)
             .style("stroke-width", this.host.colorPalette.isHighContrast ? "2px" : null);
@@ -474,7 +520,13 @@ export class BinnedChart implements IVisual {
         labels.exit().remove();
     }
 
-    private renderNormalCurve(data: PreBinnedDataPoint[], bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>, margins) {
+    private renderNormalCurve(
+        data: PreBinnedDataPoint[],
+        bins: BinnedDataPoint[],
+        xScale: d3.ScaleLinear<number, number>,
+        yScale: d3.ScaleLinear<number, number>,
+        margins: Margins
+    ) {
         const allBinValues = data.map(d => d.binValue);
         const mean = d3.mean(allBinValues)!;
         const stdDev = d3.deviation(allBinValues)!;
@@ -492,8 +544,9 @@ export class BinnedChart implements IVisual {
         const totalAggregatedValue = d3.sum(bins, d => d.aggregatedValue);
         const binWidth = (bins[0].x1 ?? 0) - (bins[0].x0 ?? 0);
 
+        // --- PART 1: Curve Rendering ---
         const curveData = xScale.ticks(100).map(x => ({
-            x: x,
+            x,
             y: normalPDF(x, mean, stdDev) * totalAggregatedValue * binWidth
         }));
 
@@ -510,30 +563,38 @@ export class BinnedChart implements IVisual {
             .style("stroke-width", this.formattingSettings.line.strokeWidth.value);
 
         this.curve.raise();
-        this.curveMarkersContainer.raise();
 
+        // --- PART 2: Curve Markers at Bin Midpoints ---
+        this.curveMarkersContainer.raise();
         this.curveMarkersContainer.attr("transform", `translate(${margins.left}, ${margins.top})`);
 
-        const markers = this.curveMarkersContainer.selectAll("circle").data(curveData);
+        const midpointsData = bins.map(bin => {
+            const midpoint = (bin.x0 + bin.x1) / 2;
+            return {
+                x: midpoint,
+                y: normalPDF(midpoint, mean, stdDev) * totalAggregatedValue * binWidth
+            };
+        });
 
-        // Create and position the invisible hover targets
+        const markers = this.curveMarkersContainer.selectAll("circle").data(midpointsData);
+
         markers.enter()
             .append("circle")
             .merge(markers as any)
             .attr("cx", d => xScale(d.x))
             .attr("cy", d => yScale(d.y))
-            .attr("r", 5) // Set a reasonable radius for hovering
+            .attr("r", 15)
             .style("fill", "transparent");
 
-        // Add the tooltip to the selection of invisible markers
         this.tooltipServiceWrapper.addTooltip(
             this.curveMarkersContainer.selectAll("circle"),
             (d: { x: number, y: number }) => {
+                const midPoint = d.x;
                 const expectedValue = d.y;
-
                 return [
                     { displayName: "Mean", value: this.formatters.forMeasure.format(mean) },
                     { displayName: "Standard Deviation", value: this.formatters.forMeasure.format(stdDev) },
+                    { displayName: "Bin Midpoint", value: this.formatters.forCategory.format(midPoint) },
                     { displayName: "Expected Value", value: this.formatters.forMeasure.format(expectedValue) }
                 ];
             }
@@ -570,15 +631,13 @@ export class BinnedChart implements IVisual {
             .text(message);
     }
 
-    private showLandingPage() {
-        console.log("showLandingPage called. isLandingPageOn is:", this.isLandingPageOn);
+    private showLandingPage() {        
         if (!this.isLandingPageOn) {
-            this.isLandingPageOn = true;            
+            this.isLandingPageOn = true;
             const landingPageElement = createLandingPage();
             this.element.appendChild(landingPageElement);
             this.LandingPage = d3Select(landingPageElement);
-        }
-        console.log("showLandingPage called after. isLandingPageOn is:", this.isLandingPageOn);
+        }        
     }
 
     private clearVisual() {
@@ -652,7 +711,16 @@ function syncSelectionState(selection: d3.Selection<d3.BaseType, BinnedDataPoint
     }
 
     selection.style("fill-opacity", (d: BinnedDataPoint) => {
-        const isSelected = d.selectionIds.some(binId => selectionIds.some(selectedId => selectedId.includes(binId)));
+        const isSelected = d.selectionIds.some(binId => selectionIds.some(selectedId => selectedId.equals(binId)));
+
+        console.log(
+            `Checking Bar [${d.x0}-${d.x1}]: isSelected = ${isSelected}`,
+            {
+                barSelectionIds: d.selectionIds.map(id => id.getKey()),
+                managerSelectionIds: selectionIds.map(id => id.getKey())
+            }
+        );
+
         if (selectionIds.length > 0) {
             return isSelected ? BinnedChart.Config.solidOpacity : BinnedChart.Config.transparentOpacity;
         }

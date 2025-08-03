@@ -53,7 +53,7 @@
         }
       }
     }
-  ],
+  ],  
   "objects": {
     "bins": {
       "displayName": "Bins",
@@ -272,6 +272,7 @@
       "default": true,
       "canvas": true
     },
+    "supportEnhancedTooltips": true,
     "roles": [
       "tooltips"
     ]
