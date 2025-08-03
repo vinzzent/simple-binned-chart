@@ -18,17 +18,8 @@ class BinsSettingsCard extends Card {
     binMode = new AutoDropdown({
         name: "binMode",
         displayName: "Bin mode",
-        value: "byCount"
-    });
-
-    sampleSize = new NumUpDown({
-        name: "sampleSize",
-        displayName: "Sample size",
-        value: 1000,
-        options: {
-            minValue: { type: powerbi.visuals.ValidatorType.Min, value: 1 }
-        }
-    });
+        value: "automatic"
+    });    
 
     numberOfBins = new NumUpDown({
         name: "numberOfBins",
@@ -83,10 +74,9 @@ class BinsSettingsCard extends Card {
         })
     });
     // END: New bin label font settings
-    slices: Slice[] = [this.binMode, this.sampleSize, this.numberOfBins, this.binSize, this.xAxisLabelsType, this.binLabelFont];
+    slices: Slice[] = [this.binMode, this.numberOfBins, this.binSize, this.xAxisLabelsType, this.binLabelFont];
 
-    public updateSlices() {
-        this.sampleSize.visible = this.binMode.value === "automatic";
+    public updateSlices() {        
         this.numberOfBins.visible = this.binMode.value === "byCount";
         this.binSize.visible = this.binMode.value === "bySize";
     }

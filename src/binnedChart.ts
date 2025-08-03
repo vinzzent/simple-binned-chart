@@ -35,6 +35,7 @@ interface Margins {
 interface PreBinnedDataPoint {
     binValue: number;
     measureValue: number;
+    countValue: number;
     tooltipValue: any;
     selectionId: ISelectionId;
 }
@@ -75,6 +76,7 @@ export class BinnedChart implements IVisual {
     private element: HTMLElement;
     private events: IVisualEventService;
     private categories?: powerbi.DataViewCategoryColumn;
+    private countMeasure?: powerbi.DataViewValueColumn;
     private values?: powerbi.DataViewValueColumn;
     private tooltipData?: powerbi.DataViewValueColumn;
     private formatters?: {
@@ -126,7 +128,7 @@ export class BinnedChart implements IVisual {
                 }
             });
         }, { threshold: 0 });
-        this.observer.observe(this.element);              
+        this.observer.observe(this.element);
     }
 
 
@@ -149,14 +151,16 @@ export class BinnedChart implements IVisual {
         const categorical = dataView?.categorical;
         this.categories = categorical?.categories?.[0];
         this.values = categorical?.values?.find(val => val.source.roles?.measure);
+        this.countMeasure = categorical?.values?.find(val => val.source.roles?.countMeasure);
         this.tooltipData = categorical?.values?.find(val => val.source.roles?.tooltips);
 
         const hasCategories = !!this.categories;
         const hasValues = !!this.values;
+        const hasCountMeasure = !!this.countMeasure;
         const isCategoryNumeric = this.categories?.source.type.numeric === true;
 
 
-        if (!hasCategories && !hasValues) {
+        if (!hasCategories && !hasValues && !hasCountMeasure) {
             currentState = VisualState.Landing;
         } else if (!hasCategories || !isCategoryNumeric) {
             currentState = VisualState.Error;
@@ -164,6 +168,9 @@ export class BinnedChart implements IVisual {
         } else if (!hasValues) {
             currentState = VisualState.Error;
             validationMessage = "'Value' must be a numeric measure.";
+        } else if (!hasCountMeasure) {
+            currentState = VisualState.Error;
+            validationMessage = "'Count measure' must be a numeric measure.";
         } else {
             currentState = VisualState.Chart;
         }
@@ -223,15 +230,18 @@ export class BinnedChart implements IVisual {
         const preBinnedData: PreBinnedDataPoint[] = [];
         const categories = this.categories;
         const values = this.values;
+        const countMeasure = this.countMeasure;
         const tooltipData = this.tooltipData;
 
         for (let i = 0; i < categories.values.length; i++) {
             const binValue = categories.values[i] as number;
             const measureValue = values.values[i] as number;
+            const countValue = countMeasure.values[i] as number;
             if (typeof binValue === 'number' && typeof measureValue === 'number') {
                 preBinnedData.push({
                     binValue,
                     measureValue,
+                    countValue,
                     tooltipValue: tooltipData ? tooltipData.values[i] : null,
                     selectionId: this.host.createSelectionIdBuilder().withCategory(categories, i).createSelectionId()
                 });
@@ -257,8 +267,8 @@ export class BinnedChart implements IVisual {
         } else { // Handles 'automatic' and 'byCount'
             let numBins: number;
             if (binMode === "automatic") {
-                const sampleSize = this.formattingSettings.bins.sampleSize.value;
-                numBins = Math.max(1, Math.ceil(Math.log2(sampleSize) + 1));
+                const N = d3.sum(preBinnedData, d => d.countValue);
+                numBins = Math.max(1, Math.ceil(Math.log2(N) + 1));
             } else { // 'byCount'
                 numBins = this.formattingSettings.bins.numberOfBins.value;
             }
@@ -279,10 +289,20 @@ export class BinnedChart implements IVisual {
 
         const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin) => {
             //const aggregatedValue = d3.sum(bin, d => d.measureValue);
+
             let aggregatedValue: number;
             const valueCalc = this.formattingSettings.bars.valuesCalculation.value;
-            if (valueCalc === "average") {
-                aggregatedValue = d3.mean(bin, d => d.measureValue);
+
+            if (valueCalc === "weightedAvg") {                
+                const weightedSum = d3.sum(bin, d => d.measureValue * d.countValue);
+                const totalCount = d3.sum(bin, d => d.countValue);
+
+                aggregatedValue = totalCount > 0 ? weightedSum / totalCount : 0;
+
+            } else if (valueCalc === "minimum") {
+                aggregatedValue = d3.min(bin, d => d.measureValue) ?? 0;
+            } else if (valueCalc === "maximum") {
+                aggregatedValue = d3.max(bin, d => d.measureValue) ?? 0;
             } else { // Default to sum
                 aggregatedValue = d3.sum(bin, d => d.measureValue);
             }
@@ -304,10 +324,19 @@ export class BinnedChart implements IVisual {
                 // const aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
                 let aggregatedTooltipValue: number;
                 const tooltipCalc = this.formattingSettings.bars.tooltipCalculation.value;
-                 if (tooltipCalc === "average") {
-                    aggregatedTooltipValue = d3.mean(bin, d => d.tooltipValue as number);
+
+                if (tooltipCalc === "weightedAvg") {
+                    const weightedSum = d3.sum(bin, d => (d.tooltipValue) * d.countValue);
+                    const totalCount = d3.sum(bin, d => d.countValue);
+
+                    aggregatedTooltipValue = totalCount > 0 ? weightedSum / totalCount : 0;
+
+                } else if (tooltipCalc === "minimum") {
+                    aggregatedTooltipValue = d3.min(bin, d => d.tooltipValue) ?? 0;
+                } else if (tooltipCalc === "maximum") {
+                    aggregatedTooltipValue = d3.max(bin, d => d.tooltipValue) ?? 0;
                 } else { // Default to sum
-                    aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
+                    aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue);
                 }
                 tooltips.push({
                     displayName: tooltipData.source.displayName,
@@ -647,13 +676,13 @@ export class BinnedChart implements IVisual {
             .text(message);
     }
 
-    private showLandingPage() {        
+    private showLandingPage() {
         if (!this.isLandingPageOn) {
             this.isLandingPageOn = true;
             const landingPageElement = createLandingPage();
             this.element.appendChild(landingPageElement);
             this.LandingPage = d3Select(landingPageElement);
-        }        
+        }
     }
 
     private clearVisual() {
@@ -717,7 +746,7 @@ export class BinnedChart implements IVisual {
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
-        this.formattingSettings.bars.tooltipCalculation.visible = this.formattingSettings.isTooltipDataPresent;   
+        this.formattingSettings.bars.tooltipCalculation.visible = this.formattingSettings.isTooltipDataPresent;
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
         //return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
@@ -766,7 +795,7 @@ function createLandingPage(): Element {
     subheader.textContent = "By Concacore Labs";
     subheader.className = "LandingPageSubheader";
     const p1 = document.createElement("p");
-    p1.textContent = "Please provide data to both 'Field to bin' and 'Value'.";
+    p1.textContent = "Please assign fields to all three roles: 'Field to bin', 'Count measure', and 'Value'. Reusing the same field or measure across multiple roles is allowed.";
     p1.className = "LandingPageHelpText";
     const docLink = document.createElement("a"); docLink.href = "#";
     docLink.textContent = "Documentation";

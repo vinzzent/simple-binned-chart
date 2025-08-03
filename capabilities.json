@@ -5,11 +5,16 @@
       "name": "category",
       "kind": "Grouping"
     },
+     {
+      "displayName": "Count measure",
+      "name": "countMeasure",
+      "kind": "Measure"
+    },
     {
       "displayName": "Value",
       "name": "measure",
       "kind": "Measure"
-    },
+    },   
     {
       "displayName": "Extra Tooltip",
       "name": "tooltips",
@@ -24,6 +29,9 @@
             "max": 1
           },
           "measure": {
+            "max": 1
+          },
+          "countMeasure": {            
             "max": 1
           },
           "tooltips": {
@@ -42,6 +50,11 @@
             {
               "bind": {
                 "to": "measure"
+              }
+            },
+            {
+              "bind": {
+                "to": "countMeasure"
               }
             },
             {
@@ -89,7 +102,7 @@
           "type": {
             "enumeration": [
               {
-                "displayName": "By sample size",
+                "displayName": "Automatic",
                 "value": "automatic"
               },
               {
@@ -101,12 +114,6 @@
                 "value": "bySize"
               }
             ]
-          }
-        },
-        "sampleSize": {
-          "displayName": "Sample size",
-          "type": {
-            "numeric": true
           }
         },
         "numberOfBins": {
@@ -156,7 +163,9 @@
             "type": {
                 "enumeration": [
                     { "displayName": "Sum", "value": "sum" },
-                    { "displayName": "Average", "value": "average" }
+                    { "displayName": "Weighted average", "value": "weightedAvg" },
+                    { "displayName": "Minimun", "value": "minimun" },
+                    { "displayName": "Maximun", "value": "maximun" }
                 ]
             }
         },
@@ -165,7 +174,9 @@
             "type": {
                 "enumeration": [
                     { "displayName": "Sum", "value": "sum" },
-                    { "displayName": "Average", "value": "average" }
+                    { "displayName": "Weighted average", "value": "weightedAvg" },
+                    { "displayName": "Minimun", "value": "minimun" },
+                    { "displayName": "Maximun", "value": "maximun" }
                 ]
             }
         },
