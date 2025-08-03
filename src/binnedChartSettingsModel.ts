@@ -43,9 +43,9 @@ class BinsSettingsCard extends Card {
     binSize = new NumUpDown({
         name: "binSize",
         displayName: "Bin size",
-        value: 50,
+        value: 30,
         options: {
-            minValue: { type: powerbi.visuals.ValidatorType.Min, value: 1 }
+            minValue: { type: powerbi.visuals.ValidatorType.Min, value: 0.000001 }
         }
     });
 
@@ -102,6 +102,23 @@ class BarsSettingsCard extends Card {
         displayName: "Bar color",
         value: { value: "#01B8AA" }
     });
+
+     // change started
+    valuesCalculation = new AutoDropdown({
+        name: "valuesCalculation",
+        displayName: "Values calculation",
+        value: "sum"        
+    });
+
+    tooltipCalculation = new AutoDropdown({
+        name: "tooltipCalculation",
+        displayName: "Tooltip calculation",
+        value: "sum"        
+    });
+    // change ended
+
+
+
     yTickFont = new FontControl({
         name: "yTickFont",
         displayName: "Y tick font",
@@ -191,6 +208,8 @@ class BarsSettingsCard extends Card {
     slices: Slice[] = [
         this.fill,
         this.yTickFont, // Added here
+        this.valuesCalculation,
+        this.tooltipCalculation,
         this.showBarValues,
         this.labelFontColor,
         this.labelFont,
@@ -250,6 +269,7 @@ export class BinnedChartSettingsModel extends Model {
     bins = new BinsSettingsCard();
     bars = new BarsSettingsCard();
     line = new LineSettingsCard();
+    isTooltipDataPresent: boolean = false;
 
     cards: Card[] = [this.bins, this.bars, this.line];
 

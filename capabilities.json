@@ -151,6 +151,24 @@
             }
           }
         },
+        "valuesCalculation": {
+            "displayName": "Values calculation",
+            "type": {
+                "enumeration": [
+                    { "displayName": "Sum", "value": "sum" },
+                    { "displayName": "Average", "value": "average" }
+                ]
+            }
+        },
+        "tooltipCalculation": {
+            "displayName": "Tooltip calculation",
+            "type": {
+                "enumeration": [
+                    { "displayName": "Sum", "value": "sum" },
+                    { "displayName": "Average", "value": "average" }
+                ]
+            }
+        },
         "yTickFontFamily": {
           "displayName": "Y tick font",
           "type": {

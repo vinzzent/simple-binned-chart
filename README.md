@@ -1,4 +1,4 @@
-# Simple Binned Chart
+# Simple Binned Chart: a Power BI Custom Visual
 
 ---
 
@@ -34,13 +34,13 @@ Upon receiving the DataView object from Power BI, the visual uses D3.js to:
 1. Determine bin thresholds based on the distinct values of the "Field to bin", as grouped by Power BI.
 2. For each bin, calculate the bar height by summing the measure specified in "Value". The measure values come pre-aggregated by Power BI according to the grouped distinct values.
 
-This approach enables direct visualization of aggregated business measures (e.g., total service time, average pollution index) across a numeric scale.
+This approach enables direct visualization of aggregated business measures across a numeric scale.
 
 ---
 
 ## Key Capabilities
 
-* **True Binned Chart Functionality**: Unlike standard histograms, this chart can plot any aggregated measure on the Y-axis (e.g., average test scores, maximum wait time, total maintenance hours). You might use it to display how water consumption varies by household size or to explore device failure rates by operating temperature.
+* **True Binned Chart Functionality**: this chart can plot any aggregated measure on the Y-axis. You might use it to display how water consumption varies by household size or to explore device failure rates by operating temperature.
 
 * **Effortless Equal-Width Bin Generation**:
 
@@ -54,7 +54,7 @@ This approach enables direct visualization of aggregated business measures (e.g.
 
 * **Robust and User-Friendly Design**: Guides users with clear error messages and a setup landing page.
 
-* **Comprehensive Formatting**: Customization options for bar and curve colors, data labels, axis styles, and labeling modes ("tickValue" or "binRange").
+* **Comprehensive Formatting**: Customization options for bar and curve colors, data labels, axis styles, and labeling modes ("Tick value" or "Bin range").
 
 * **Built for Accessibility & Security**: Includes keyboard navigation, ARIA attributes, and no external calls (empty `privileges` array).
 
@@ -62,12 +62,12 @@ This approach enables direct visualization of aggregated business measures (e.g.
 
 ## Benefits to Users
 
-* **Unlock Deeper Insights**: Analyze how any measure distributes across a numeric scale—not just counts. Example: visualize average processing time across varying document sizes or total electricity usage by square footage.
+* **Unlock Deeper Insights**: Analyze how any measure distributes across a numeric scale—not just counts.
+* 
+* **Accelerate Data Exploration**: Try different binning strategies instantly, with no data model changes.
 
-* **Accelerate Data Exploration**: Try different binning strategies instantly, with no data model changes. Example: quickly group student grades into performance bands or explore CO2 emissions by engine size.
-
-* **Enhance Statistical Storytelling**: Blend flexible binning with a normal curve for richer narratives. Example: overlay expected normal distribution on actual energy consumption patterns or sleep duration data.
-
+* **Enhance Statistical Storytelling**: Blend flexible binning with a normal curve for richer narratives.
+* 
 ---
 
 ## Target Audience

@@ -1,6 +1,6 @@
 ### **Simple Binned Chart: Usage**
 
-Welcome to the Simple Binned Chart! This guide will walk you through everything you need to know to turn your data into powerful, insightful histograms. This visual is designed to group (or "bin") your numeric data on the fly, allowing you to analyze aggregated values like averages, sums, or maximums across different ranges without ever needing to modify your underlying data model.
+Welcome to the Simple Binned Chart! This guide will walk you through everything you need to know to turn your data into powerful, insightful histograms. This visual is designed to group (or "bin") your numeric data on the fly, allowing you to analyze aggregated values like frquencies, averages, sums across different ranges without ever needing to modify your underlying data model.
 
 Let's dive in!
 
@@ -12,7 +12,7 @@ First, you need to provide the right data. The visual has three data fields that
 * **Value (Required):** This is the numeric measure you want to aggregate and display on the Y-axis. For instance, if you're binning by age, the value could be the *average* number of doctor visits or the *total* sales amount for each age group. **This field must contain a numeric measure.**
 * **Extra Tooltip:** You can add an additional measure here. Its aggregated value will appear in the tooltip when you hover over a bar, providing extra context.
 
-Once you drag data into the first two fields, the chart will automatically render. If no data is provided, a helpful landing page will guide you on what to do next.
+Once you drag data into the first two fields, the chart will automatically render. If no data is provided, a landing page will guide you on what to do next.
 
 ### **Formatting Your Chart**
 

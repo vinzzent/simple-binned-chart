@@ -215,6 +215,7 @@ export class BinnedChart implements IVisual {
     private renderChart(dataView: powerbi.DataView, width: number, height: number) {
         // This function encapsulates all logic for processing data and drawing the chart.
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(BinnedChartSettingsModel, dataView);
+        this.formattingSettings.isTooltipDataPresent = !!this.tooltipData;
         this.formattingSettings.updateAllSlices();
 
         const margins = BinnedChart.Config.margins;
@@ -277,7 +278,15 @@ export class BinnedChart implements IVisual {
             .thresholds(thresholds);
 
         const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin) => {
-            const aggregatedValue = d3.sum(bin, d => d.measureValue);
+            //const aggregatedValue = d3.sum(bin, d => d.measureValue);
+            let aggregatedValue: number;
+            const valueCalc = this.formattingSettings.bars.valuesCalculation.value;
+            if (valueCalc === "average") {
+                aggregatedValue = d3.mean(bin, d => d.measureValue);
+            } else { // Default to sum
+                aggregatedValue = d3.sum(bin, d => d.measureValue);
+            }
+
             const selectionIds = bin.map(d => d.selectionId);
 
             const binX0 = bin.x0 ?? 0;
@@ -292,7 +301,14 @@ export class BinnedChart implements IVisual {
             ];
 
             if (tooltipData) {
-                const aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
+                // const aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
+                let aggregatedTooltipValue: number;
+                const tooltipCalc = this.formattingSettings.bars.tooltipCalculation.value;
+                 if (tooltipCalc === "average") {
+                    aggregatedTooltipValue = d3.mean(bin, d => d.tooltipValue as number);
+                } else { // Default to sum
+                    aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
+                }
                 tooltips.push({
                     displayName: tooltipData.source.displayName,
                     value: this.formatters.forExtraTooltip.format(aggregatedTooltipValue),
@@ -701,7 +717,9 @@ export class BinnedChart implements IVisual {
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
+        this.formattingSettings.bars.tooltipCalculation.visible = this.formattingSettings.isTooltipDataPresent;   
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
+        //return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 }
 
@@ -743,15 +761,18 @@ function createLandingPage(): Element {
     // The rest stays the same
     const header = document.createElement("h1");
     header.textContent = "Simple Binned Chart";
-    header.className = "LandingPage";
+    header.className = "LandingPageHeader";
+    const subheader = document.createElement("h2");
+    subheader.textContent = "By Concacore Labs";
+    subheader.className = "LandingPageSubheader";
     const p1 = document.createElement("p");
     p1.textContent = "Please provide data to both 'Field to bin' and 'Value'.";
-    p1.className = "LandingPageHelpLink";
-    const websiteLink = document.createElement("a"); websiteLink.href = "#";
-    websiteLink.textContent = "Website";
-    websiteLink.style.display = "block";
-    websiteLink.style.textAlign = "center";
-    websiteLink.style.marginTop = "30px";
+    p1.className = "LandingPageHelpText";
+    const docLink = document.createElement("a"); docLink.href = "#";
+    docLink.textContent = "Documentation";
+    docLink.style.display = "block";
+    docLink.style.textAlign = "center";
+    docLink.style.marginTop = "30px";
     const contactLink = document.createElement("a");
     contactLink.href = "mailto:contact@example.com";
     contactLink.textContent = "Contact";
@@ -760,8 +781,9 @@ function createLandingPage(): Element {
     contactLink.style.marginTop = "10px";
     div.appendChild(logo);
     div.appendChild(header);
+    div.appendChild(subheader);
     div.appendChild(p1);
-    div.appendChild(websiteLink);
+    div.appendChild(docLink);
     div.appendChild(contactLink);
     return div;
 }
