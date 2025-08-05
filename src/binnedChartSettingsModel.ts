@@ -14,12 +14,11 @@ import FontControl = formattingSettings.FontControl;
 class BinsSettingsCard extends Card {
     name = "bins";
     displayName = "Bins";
-    // START: New bin label font settings
     binMode = new AutoDropdown({
         name: "binMode",
         displayName: "Bin mode",
         value: "automatic"
-    });    
+    });
 
     numberOfBins = new NumUpDown({
         name: "numberOfBins",
@@ -36,13 +35,13 @@ class BinsSettingsCard extends Card {
         displayName: "Bin size",
         value: 30,
         options: {
-            minValue: { type: powerbi.visuals.ValidatorType.Min, value: 0.000001 }
+            minValue: { type: powerbi.visuals.ValidatorType.Min, value: 0.01 }
         }
     });
 
     xAxisLabelsType = new AutoDropdown({
         name: "xAxisLabelsType",
-        displayName: "Tick value",
+        displayName: "Bin label",
         value: "tickValue"
     });
     binLabelFont = new FontControl({
@@ -73,10 +72,9 @@ class BinsSettingsCard extends Card {
             value: false
         })
     });
-    // END: New bin label font settings
     slices: Slice[] = [this.binMode, this.numberOfBins, this.binSize, this.xAxisLabelsType, this.binLabelFont];
 
-    public updateSlices() {        
+    public updateSlices() {
         this.numberOfBins.visible = this.binMode.value === "byCount";
         this.binSize.visible = this.binMode.value === "bySize";
     }
@@ -92,23 +90,17 @@ class BarsSettingsCard extends Card {
         displayName: "Bar color",
         value: { value: "#01B8AA" }
     });
-
-     // change started
     valuesCalculation = new AutoDropdown({
         name: "valuesCalculation",
-        displayName: "Values calculation",
-        value: "sum"        
+        displayName: "Value calculation",
+        value: "sum"
     });
 
     tooltipCalculation = new AutoDropdown({
         name: "tooltipCalculation",
         displayName: "Tooltip calculation",
-        value: "sum"        
+        value: "sum"
     });
-    // change ended
-
-
-
     yTickFont = new FontControl({
         name: "yTickFont",
         displayName: "Y tick font",
@@ -142,8 +134,6 @@ class BarsSettingsCard extends Card {
         displayName: "Show bar value",
         value: false
     });
-
-    // slices: Slice[] = [this.fill, this.showBarValues];
     labelFontColor = new ColorPicker({
         name: "labelFontColor",
         displayName: "Color",
@@ -182,7 +172,7 @@ class BarsSettingsCard extends Card {
     labelDisplayUnits = new AutoDropdown({
         name: "labelDisplayUnits",
         displayName: "Display units",
-        value: "0" // "0" for Auto
+        value: "0"
     });
 
     labelPrecision = new NumUpDown({
@@ -197,7 +187,7 @@ class BarsSettingsCard extends Card {
 
     slices: Slice[] = [
         this.fill,
-        this.yTickFont, // Added here
+        this.yTickFont,
         this.valuesCalculation,
         this.tooltipCalculation,
         this.showBarValues,
@@ -206,8 +196,6 @@ class BarsSettingsCard extends Card {
         this.labelDisplayUnits,
         this.labelPrecision
     ];
-
-    // --- ADDED: Method to conditionally show/hide label options ---
     public updateSlices() {
         const showLabels = this.showBarValues.value;
         this.labelFontColor.visible = showLabels;
@@ -233,8 +221,6 @@ class LineSettingsCard extends Card {
         displayName: "Curve color",
         value: { value: "#E66C37" }
     });
-
-    // Added a numeric up-down control for line thickness.
     strokeWidth = new NumUpDown({
         name: "strokeWidth",
         displayName: "Curve thickness",

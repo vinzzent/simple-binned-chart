@@ -1,4 +1,15 @@
-### **Simple Binned Chart: a Power BI Custom Visual**
+![Logo](./assets/logo.svg)
+### **EasyBinner: a Power BI histogram-like custom visual**
+- [**EasyBinner: a Power BI histogram-like custom visual**](#easybinner-a-power-bi-histogram-like-custom-visual)
+- [**Core Purpose: Flexible and Accessible Data Binning**](#core-purpose-flexible-and-accessible-data-binning)
+- [**Deeper Dive: An Aggregation-Focused Architecture**](#deeper-dive-an-aggregation-focused-architecture)
+  - [**Data Model**](#data-model)
+  - [**Processing Logic**](#processing-logic)
+- [**Key Capabilities**](#key-capabilities)
+- [**Benefits to Users**](#benefits-to-users)
+- [**Target Audience**](#target-audience)
+- [**Usage Guide**](#usage-guide)
+
 
 -----
 
@@ -18,7 +29,7 @@ This solution empowers analysts by bringing complex binning logic to the front e
 
 ### **Deeper Dive: An Aggregation-Focused Architecture**
 
-The Simple Binned Chart moves beyond simple frequency counting. It is architected to aggregate a measure across dynamically generated bins of uniform width.
+The EasyBinner moves beyond simple frequency counting. It is architected to aggregate a measure across dynamically generated bins of uniform width.
 
 #### **Data Model**
 
@@ -26,7 +37,7 @@ Defined in `capabilities.json`, three data roles drive the visual:
 
   * **"Field to bin"**: A grouping role for the continuous numeric field to be binned.
   * **"Value"**: A measure role for the field to be aggregated within those bins.
-  * **"Count measure"**: A measure role for a field used in multiple calculations, including the weighted average and the determination of bin count via Sturges' formula.
+  * **"Frequency measure"**: A measure role for a field used in multiple calculations, including the weighted average and the determination of bin count via Sturges' formula.
 
 #### **Processing Logic**
 
@@ -79,4 +90,4 @@ This approach enables direct visualization of aggregated business measures acros
 
 ### **Usage Guide**
 
-For step-by-step instructions on configuring and using the Simple Binned Chart, see the [Usage Guide](USAGE.md).
+For step-by-step instructions on configuring and using the EasyBinner, see the [Usage Guide](USAGE.md).

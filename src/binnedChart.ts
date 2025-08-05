@@ -1,3 +1,6 @@
+// #region IMPORTS
+
+// Imports D3 modules, Power BI visual API, and utility helpers for tooltips, formatting, and chart settings
 import * as d3 from "d3";
 import {
     BaseType,
@@ -10,9 +13,10 @@ import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel
 import { valueFormatter, textMeasurementService as tms } from "powerbi-visuals-utils-formattingutils";
 import { BinnedChartSettingsModel } from "./binnedChartSettingsModel";
 
+// Imports the visual's custom styles from a LESS stylesheet
 import "./../style/visual.less";
 
-// powerbi.visuals
+// Imports Power BI visual interfaces and types used for visual construction, updates, interactivity, and events
 import IVisual = powerbi.extensibility.IVisual;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
@@ -22,8 +26,14 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import ISelectionId = powerbi.visuals.ISelectionId;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 
+// #endregion
+
+// #region DEFINITIONS
+
+// Defines a type alias for the return type of valueFormatter.create
 type Formatter = ReturnType<typeof valueFormatter.create>;
 
+// Defines optional margins with required top and left values
 interface Margins {
     top: number;
     right?: number;
@@ -48,16 +58,15 @@ export interface BinnedDataPoint extends d3.Bin<PreBinnedDataPoint, number> {
     color: string;
 }
 
+// Represents the possible UI states of the visual
 enum VisualState {
     Landing,
     Error,
     Chart
 }
 
+// Defines the main BinnedChart visual class and its internal state, elements, services, and data bindings
 export class BinnedChart implements IVisual {
-    private observer: IntersectionObserver;
-    private lastUpdateOptions?: VisualUpdateOptions;
-    private isVisible: boolean = false;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private host: IVisualHost;
     private barContainer: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -76,8 +85,8 @@ export class BinnedChart implements IVisual {
     private element: HTMLElement;
     private events: IVisualEventService;
     private categories?: powerbi.DataViewCategoryColumn;
-    private countMeasure?: powerbi.DataViewValueColumn;
     private values?: powerbi.DataViewValueColumn;
+    private countMeasure?: powerbi.DataViewValueColumn;    
     private tooltipData?: powerbi.DataViewValueColumn;
     private formatters?: {
         forCategory: Formatter,
@@ -85,23 +94,26 @@ export class BinnedChart implements IVisual {
         forExtraTooltip: Formatter,
     };
 
+    // Defines static configuration values for layout, opacity, and scaling
     static Config = {
         solidOpacity: 1,
         transparentOpacity: 0.4,
-        margins: { top: 30, right: 30, bottom: 30, left: 50, },
+        margins: { top: 30, right: 30, bottom: 30, left: 75, },
         labelCharHeight: 10,
         yMaxMultiplier: 1.1,
     };
 
+    // #endregion
+
+    // #region CONTRUCTOR
+
+    // Initializes the visual: sets up SVG elements, accessibility, tooltip, selection, formatting, and visibility observer
     constructor(options: VisualConstructorOptions) {
         this.element = options.element;
         this.host = options.host;
         this.events = options.host.eventService;
-
         this.element.setAttribute('tabindex', '0');
-
         this.svg = d3Select(this.element).append("svg").classed("binnedBarChart", true);
-        this.barContainer = this.svg.append("g").classed("barContainer", true);
         this.xAxis = this.svg.append("g").classed("xAxis", true);
         this.yAxis = this.svg.append("g").classed("yAxis", true);
         this.dataLabelsContainer = this.svg.append("g").classed("dataLabelsContainer", true);
@@ -114,27 +126,14 @@ export class BinnedChart implements IVisual {
         this.formattingSettingsService = new FormattingSettingsService(localizationManager);
         this.barContainer = this.svg.append("g").classed("barContainer", true).attr("role", "list");
         this.handleContextMenu();
-
-        this.observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !this.isVisible) {
-                    this.isVisible = true;
-                    if (this.lastUpdateOptions) {
-                        console.log("Visual became visible. Forcing update.");
-                        this.update(this.lastUpdateOptions);
-                    }
-                } else if (!entry.isIntersecting) {
-                    this.isVisible = false;
-                }
-            });
-        }, { threshold: 0 });
-        this.observer.observe(this.element);
     }
 
+    // ##endregion
 
+    // #region UPDATE
+
+    // processes new data and viewport settings to determine the visual's state (landing, error, or chart), renders accordingly, and notifies Power BI of rendering events.    
     public update(options: VisualUpdateOptions) {
-        this.lastUpdateOptions = options;
-        console.log("update started with options:", options);
         this.events.renderingStarted(options);
         const dataView = options.dataViews[0];
 
@@ -142,9 +141,7 @@ export class BinnedChart implements IVisual {
         const height = options.viewport.height;
         this.svg.attr("width", width).attr("height", height);
 
-        // --- STATE DETERMINATION ---
-        // This block determines the single, correct state for the visual based on the dataView.
-        // This prevents race conditions and intermediate states from causing blank screens.
+        // STATE DETERMINATION: This block determines the single state for the visual based on the dataView.
         let currentState: VisualState;
         let validationMessage: string = "";
 
@@ -170,20 +167,17 @@ export class BinnedChart implements IVisual {
             validationMessage = "'Value' must be a numeric measure.";
         } else if (!hasCountMeasure) {
             currentState = VisualState.Error;
-            validationMessage = "'Count measure' must be a numeric measure.";
+            validationMessage = "'Frequency measure' must be a numeric measure.";
         } else {
             currentState = VisualState.Chart;
         }
 
-        // --- STATE RENDERER ---
-        // This switch statement acts on the determined state, ensuring only one
-        // rendering path is executed per update cycle.
+        // STATE RENDERER: This switch statement acts on the determined state, ensuring only one rendering path is executed.
         switch (currentState) {
             case VisualState.Landing:
                 this.svg.classed("hidden", true);
                 this.clearVisual();
                 this.showLandingPage();
-                console.log("Landing page");
                 break;
 
             case VisualState.Error:
@@ -191,15 +185,12 @@ export class BinnedChart implements IVisual {
                 this.hideLandingPage();
                 this.clearVisual();
                 this.displayValidationError(validationMessage);
-                console.log("Error message");
                 break;
 
             case VisualState.Chart:
                 this.svg.classed("hidden", false);
                 this.hideLandingPage();
-                this.svg.select(".validation-error").remove(); // Clear any previous error messages
-
-                console.log("Chart display");
+                this.svg.select(".validation-error").remove();
                 this.formatters = {
                     forCategory: valueFormatter.create({
                         format: this.categories?.source.format,
@@ -219,8 +210,12 @@ export class BinnedChart implements IVisual {
         this.events.renderingFinished(options);
     }
 
+    // #endregion
+
+    // #region RENDER CHART: SETUP & DATA EXTRACTION
+
+    // Transforms data, sets scales, and renders binned histogram with bars, axes, labels, and optional curve.
     private renderChart(dataView: powerbi.DataView, width: number, height: number) {
-        // This function encapsulates all logic for processing data and drawing the chart.
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(BinnedChartSettingsModel, dataView);
         this.formattingSettings.isTooltipDataPresent = !!this.tooltipData;
         this.formattingSettings.updateAllSlices();
@@ -254,32 +249,56 @@ export class BinnedChart implements IVisual {
             return; // Use return to exit the function.
         }
 
+        // #endregion
+
+        // #region RENDER CHART: BIDDING LOGIC & SCALES
+
         const dataDomain: [number, number] = [
             d3.min(preBinnedData, d => d.binValue) as number,
             d3.max(preBinnedData, d => d.binValue) as number
         ];
 
-        let binSize: number;
+        // --- Step 1: Determine number of bins (if not using fixed size) ---
         const binMode = this.formattingSettings.bins.binMode.value;
+        const [minDomain, maxDomain] = dataDomain; // Use destructuring for clarity
+        let numBins: number | undefined;
 
-        if (binMode === "bySize") {
-            binSize = this.formattingSettings.bins.binSize.value;
-        } else { // Handles 'automatic' and 'byCount'
-            let numBins: number;
-            if (binMode === "automatic") {
-                const N = d3.sum(preBinnedData, d => d.countValue);
-                numBins = Math.max(1, Math.ceil(Math.log2(N) + 1));
-            } else { // 'byCount'
-                numBins = this.formattingSettings.bins.numberOfBins.value;
-            }
-            binSize = (dataDomain[1] - dataDomain[0]) / numBins;
+        if (binMode === "automatic") {
+            // Sturges' formula for a good default number of bins
+            const N = d3.sum(preBinnedData, d => d.countValue);
+            numBins = Math.max(1, Math.ceil(Math.log2(N) + 1));
+        } else if (binMode === "byCount") {
+            numBins = this.formattingSettings.bins.numberOfBins.value;
         }
 
-        const alignedMin = Math.floor(dataDomain[0] / binSize) * binSize;
-        const alignedMax = Math.ceil(dataDomain[1] / binSize) * binSize;
+        // --- Step 2: Calculate initial binSize ---
+        // For 'bySize', it's set directly. For others, it's based on numBins.
+        let binSize = (binMode === "bySize")
+            ? this.formattingSettings.bins.binSize.value
+            : (maxDomain - minDomain) / numBins!;
+
+        // --- Step 3: Align domain and recalculate binSize for 'byCount' ---
+        // Round the domain outwards to multiples of the binSize for cleaner axes.
+        const alignedMin = Math.floor(minDomain / binSize) * binSize;
+        const alignedMax = Math.ceil(maxDomain / binSize) * binSize;
+
+        // To ensure the user gets the *exact* number of bins they asked for in 'byCount' mode,
+        // we recalculate the binSize based on the newly aligned domain.
+        if (binMode === "byCount") {
+            binSize = (alignedMax - alignedMin) / numBins!;
+        }
+
+        // --- Step 4: Generate thresholds and final "nice" domain ---
         const thresholds = d3.range(alignedMin, alignedMax, binSize);
-        const alignedMaxCorr = thresholds.length > 0 ? thresholds[thresholds.length - 1] + binSize : alignedMin + binSize;
-        const niceDomain: [number, number] = [alignedMin, alignedMaxCorr];
+
+        // Correct the final boundary to prevent floating-point errors from d3.range excluding the last value.
+        const alignedMaxCorrected = thresholds.length > 0
+            ? thresholds[thresholds.length - 1] + binSize
+            : alignedMin + binSize;
+
+        const niceDomain: [number, number] = [alignedMin, alignedMaxCorrected];
+
+        // --- Step 5: Configure D3 components ---
         const niceXScale = d3.scaleLinear().domain(niceDomain);
 
         const histogram = d3.bin<PreBinnedDataPoint, number>()
@@ -287,13 +306,15 @@ export class BinnedChart implements IVisual {
             .domain(niceDomain)
             .thresholds(thresholds);
 
-        const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin) => {
-            //const aggregatedValue = d3.sum(bin, d => d.measureValue);
+        // #endregion
 
+        // #region RENDER CHART: AGGREGATION, TOOLTIPS AND STYLING
+
+        const bins: BinnedDataPoint[] = histogram(preBinnedData).map((bin) => {
             let aggregatedValue: number;
             const valueCalc = this.formattingSettings.bars.valuesCalculation.value;
 
-            if (valueCalc === "weightedAvg") {                
+            if (valueCalc === "weightedAvg") {
                 const weightedSum = d3.sum(bin, d => d.measureValue * d.countValue);
                 const totalCount = d3.sum(bin, d => d.countValue);
 
@@ -321,7 +342,6 @@ export class BinnedChart implements IVisual {
             ];
 
             if (tooltipData) {
-                // const aggregatedTooltipValue = d3.sum(bin, d => d.tooltipValue as number);
                 let aggregatedTooltipValue: number;
                 const tooltipCalc = this.formattingSettings.bars.tooltipCalculation.value;
 
@@ -348,7 +368,6 @@ export class BinnedChart implements IVisual {
                 ? this.host.colorPalette.foreground.value
                 : this.formattingSettings.bars.fill.value.value;
 
-            // Safely add new properties and cast to BinnedDataPoint
             const extendedBin = bin as BinnedDataPoint;
             extendedBin.aggregatedValue = aggregatedValue;
             extendedBin.selectionIds = selectionIds;
@@ -416,13 +435,19 @@ export class BinnedChart implements IVisual {
         }
     }
 
+    // #endregion
+
+    // #region RENDER BARS
+
+    // Binds bins to bars, updates visuals and accessibility, adds tooltips, and enables interaction.
     private renderBars(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>, heightWithMargin: number) {
         const bars = this.barContainer.selectAll("rect").data(bins);
-
-        //const valueFormatterForAria = valueFormatter.create({ format: "0.###" });
-        bars.enter()
+        bars.exit().remove();
+        const allBars = bars.enter()
             .append("rect")
-            .merge(bars as any)
+            .merge(bars as any);
+
+        allBars
             .attr("x", (d: BinnedDataPoint) => xScale(d.x0!) + 1)
             .attr("y", (d: BinnedDataPoint) => yScale(d.aggregatedValue))
             .attr("width", (d: BinnedDataPoint) => Math.max(0, xScale(d.x1!) - xScale(d.x0!) - 1))
@@ -435,16 +460,18 @@ export class BinnedChart implements IVisual {
             .style("stroke-width", this.host.colorPalette.isHighContrast ? "2px" : null);
 
         this.tooltipServiceWrapper.addTooltip(
-            this.barContainer.selectAll("rect"),
+            allBars,
             (d: BinnedDataPoint) => d.tooltips
         );
-
-        this.setupInteractivity(bars, bins);
-
-        bars.exit().remove();
+        this.setupInteractivity(allBars, bins);
     }
 
-    private setupInteractivity(bars: d3.Selection<d3.BaseType, BinnedDataPoint, SVGGElement, unknown>, bins: BinnedDataPoint[]) {
+    // #endregion
+
+    // #region SETUP INTERACTIVITY
+
+    // Adds keyboard/mouse handlers for selection, navigation, focus, and clearing selection.
+    private setupInteractivity(allBars: d3.Selection<d3.BaseType, BinnedDataPoint, SVGGElement, unknown>, bins: BinnedDataPoint[]) {
         const selectionManager = this.selectionManager;
         const allowInteractions = this.host.hostCapabilities.allowInteractions;
 
@@ -452,72 +479,78 @@ export class BinnedChart implements IVisual {
             if (!allowInteractions || event.key !== "Enter") {
                 return;
             }
-            const firstBar = this.barContainer.select("rect").node() as HTMLElement;
+            const firstBar = this.barContainer.select("rect").node() as unknown as HTMLElement;
             if (firstBar) {
                 firstBar.focus();
             }
             event.preventDefault();
         };
 
-        bars.on("focus", function () {
+        allBars.on("focus", function () {
             d3.select(this).classed("keyboard-focus", true);
         });
 
-        bars.on("blur", function () {
+        allBars.on("blur", function () {
             d3.select(this).classed("keyboard-focus", false);
         });
 
-        bars.on("click", (event: MouseEvent, d: BinnedDataPoint) => {
+        allBars.on("click", (event: MouseEvent, d: BinnedDataPoint) => {
             if (allowInteractions) {
                 selectionManager.select(d.selectionIds, event.ctrlKey).then((ids: ISelectionId[]) => {
-                    syncSelectionState(bars, ids);
+                    syncSelectionState(allBars, ids);
                 });
                 event.stopPropagation();
             }
         });
 
-        bars.on("keydown", (event: KeyboardEvent, d: BinnedDataPoint) => {
+        allBars.on("keydown", (event: KeyboardEvent, d: BinnedDataPoint) => {
             if (!allowInteractions) return;
 
             const currentBarIndex = bins.indexOf(d);
+            if (currentBarIndex === -1) return; // Safeguard for robustness
 
             switch (event.key) {
                 case "Enter":
                 case " ":
                     selectionManager.select(d.selectionIds, event.ctrlKey).then((ids: ISelectionId[]) => {
-                        syncSelectionState(bars, ids);
+                        syncSelectionState(allBars, ids);
                     });
                     event.preventDefault();
                     break;
                 case "ArrowRight":
                     const nextIndex = (currentBarIndex + 1) % bins.length;
-                    (bars.nodes()[nextIndex] as HTMLElement).focus();
+                    (allBars.nodes()[nextIndex] as unknown as HTMLElement).focus();
                     event.preventDefault();
                     break;
                 case "ArrowLeft":
                     const prevIndex = (currentBarIndex - 1 + bins.length) % bins.length;
-                    (bars.nodes()[prevIndex] as HTMLElement).focus();
+                    (allBars.nodes()[prevIndex] as unknown as HTMLElement).focus();
                     event.preventDefault();
                     break;
                 case "Escape":
                     selectionManager.clear();
-                    this.element.focus();
+                    (this.element as HTMLElement).focus();
                     event.preventDefault();
                     break;
             }
         });
 
-        syncSelectionState(bars, selectionManager.getSelectionIds() as ISelectionId[]);
+        syncSelectionState(allBars, selectionManager.getSelectionIds() as ISelectionId[]);
 
         this.svg.on("click", () => {
             if (allowInteractions) {
                 selectionManager.clear().then(() => {
-                    bars.style("fill-opacity", BinnedChart.Config.solidOpacity);
+                    allBars.style("fill-opacity", BinnedChart.Config.solidOpacity);
                 });
             }
         });
     }
 
+    // #endregion
+
+    // #region X LABELS SETTINGS
+
+    //Checks if x-axis labels fit horizontally; if not, uses vertical labels and increases bottom margin.
     private calculateLabelSettings(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>) {
         let useVerticalLabels = false;
         let bottomMargin = BinnedChart.Config.margins.bottom;
@@ -541,6 +574,11 @@ export class BinnedChart implements IVisual {
         return { useVerticalLabels, bottomMargin };
     }
 
+    // #endregion
+
+    // #region X LABELS ROTATED
+
+    //Renders styled x-axis bin labels, rotated if vertical.
     private renderCustomXAxisLabels(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, topPosition: number, useVertical: boolean) {
         this.customXAxisLabels.attr("transform", `translate(${BinnedChart.Config.margins.left}, ${topPosition})`);
         const labels = this.customXAxisLabels.selectAll("text").data(bins);
@@ -565,6 +603,11 @@ export class BinnedChart implements IVisual {
         labels.exit().remove();
     }
 
+    // #endregion
+
+    // #region RENDER NORMAL CURVE
+
+    // Draws normal curve and markers with tooltips.
     private renderNormalCurve(
         data: PreBinnedDataPoint[],
         bins: BinnedDataPoint[],
@@ -648,6 +691,11 @@ export class BinnedChart implements IVisual {
         markers.exit().remove();
     }
 
+    // #endregion
+
+    // #region CONTEXT MENU
+
+    // Handles right-click to show context menu for the clicked data point.
     private handleContextMenu() {
         this.svg.on('contextmenu', (event: MouseEvent) => {
             const eventTarget: EventTarget = event.target;
@@ -660,6 +708,11 @@ export class BinnedChart implements IVisual {
         });
     }
 
+    // #endregion
+
+    // #region VALIDATION ERROR
+
+    // Shows a centered error message inside the SVG with styled text.
     private displayValidationError(message: string) {
         const width = this.element.clientWidth;
         const height = this.element.clientHeight;
@@ -676,6 +729,11 @@ export class BinnedChart implements IVisual {
             .text(message);
     }
 
+    // #endregion
+
+    // #region LANDING PAGE CONTROL
+
+    // Displays a landing page once by appending it to the element.
     private showLandingPage() {
         if (!this.isLandingPageOn) {
             this.isLandingPageOn = true;
@@ -685,6 +743,25 @@ export class BinnedChart implements IVisual {
         }
     }
 
+    // Hides and removes the landing page, restoring focus if needed.
+    private hideLandingPage() {
+        if (this.isLandingPageOn) {
+            this.isLandingPageOn = false;
+            if (this.LandingPage) {
+                const landingPageNode = this.LandingPage.node();
+                if (landingPageNode && landingPageNode.contains(document.activeElement)) {
+                    (this.element as HTMLElement).focus();
+                }
+                this.LandingPage.remove();
+            }
+        }
+    }
+
+    // #endregion
+
+    // #region CLEAR VISUAL
+
+    // Clears the chart by removing all visual elements and resets focus if needed.
     private clearVisual() {
         const svgNode = this.svg.node();
         if (svgNode && svgNode.contains(document.activeElement)) {
@@ -700,19 +777,11 @@ export class BinnedChart implements IVisual {
         this.curveMarkersContainer.selectAll("*").remove();
     }
 
-    private hideLandingPage() {
-        if (this.isLandingPageOn) {
-            this.isLandingPageOn = false;
-            if (this.LandingPage) {
-                const landingPageNode = this.LandingPage.node();
-                if (landingPageNode && landingPageNode.contains(document.activeElement)) {
-                    (this.element as HTMLElement).focus();
-                }
-                this.LandingPage.remove();
-            }
-        }
-    }
+    // #endregion
 
+    // #region DATA LABELS
+
+    // Renders formatted data labels above bars with styling and positioning based on settings.
     private renderDataLabels(bins: BinnedDataPoint[], xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>, format: string) {
         const barsSettings = this.formattingSettings.bars;
 
@@ -759,15 +828,6 @@ function syncSelectionState(selection: d3.Selection<d3.BaseType, BinnedDataPoint
 
     selection.style("fill-opacity", (d: BinnedDataPoint) => {
         const isSelected = d.selectionIds.some(binId => selectionIds.some(selectedId => selectedId.equals(binId)));
-
-        console.log(
-            `Checking Bar [${d.x0}-${d.x1}]: isSelected = ${isSelected}`,
-            {
-                barSelectionIds: d.selectionIds.map(id => id.getKey()),
-                managerSelectionIds: selectionIds.map(id => id.getKey())
-            }
-        );
-
         if (selectionIds.length > 0) {
             return isSelected ? BinnedChart.Config.solidOpacity : BinnedChart.Config.transparentOpacity;
         }
@@ -775,27 +835,28 @@ function syncSelectionState(selection: d3.Selection<d3.BaseType, BinnedDataPoint
     });
 }
 
+// #endregion
+
+// #region LANDING PAGE
+
+// Returns a div with a logo, titles, instructions, and links for empty data display.
 function createLandingPage(): Element {
     const div = document.createElement("div");
     const logo = document.createElement("img");
-    // Your SVG string (minified, no line breaks)
     const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 800 800"><path d="M27.517 256.55h214.13V786H27.517V256.55zM293.37 36.579H507.5v749.42H293.37V36.579zM558.18 526.13h214.13V786H558.18V526.13z" fill="#77bef0"/><path d="M12 783.3C225.78 563.45 269.92 13.39 403.02 14.83S574.05 567.64 793 777.19" fill="none" stroke="#ff894f" stroke-width="20"/></svg>`;
-    // URI encode the SVG string to safely embed it in a URL
     const encodedSvg = encodeURIComponent(svgString);
-    // Set the src attribute with a URI-encoded SVG data URI
     logo.src = `data:image/svg+xml;utf8,${encodedSvg}`;
     logo.alt = "Visual logo";
     logo.style.display = "block";
     logo.style.margin = "20px auto";
-    // The rest stays the same
     const header = document.createElement("h1");
-    header.textContent = "Simple Binned Chart";
+    header.textContent = "EasyBinner";
     header.className = "LandingPageHeader";
     const subheader = document.createElement("h2");
     subheader.textContent = "By Concacore Labs";
     subheader.className = "LandingPageSubheader";
     const p1 = document.createElement("p");
-    p1.textContent = "Please assign fields to all three roles: 'Field to bin', 'Count measure', and 'Value'. Reusing the same field or measure across multiple roles is allowed.";
+    p1.textContent = "Please assign fields to all three roles: 'Field to bin', 'Frequency measure', and 'Value'. Reusing the same field or measure across multiple roles is allowed.";
     p1.className = "LandingPageHelpText";
     const docLink = document.createElement("a"); docLink.href = "#";
     docLink.textContent = "Documentation";
@@ -803,7 +864,7 @@ function createLandingPage(): Element {
     docLink.style.textAlign = "center";
     docLink.style.marginTop = "30px";
     const contactLink = document.createElement("a");
-    contactLink.href = "mailto:contact@example.com";
+    contactLink.href = "mailto:vvborries@gmail.com";
     contactLink.textContent = "Contact";
     contactLink.style.display = "block";
     contactLink.style.textAlign = "center";
@@ -816,3 +877,5 @@ function createLandingPage(): Element {
     div.appendChild(contactLink);
     return div;
 }
+
+// #endregion
