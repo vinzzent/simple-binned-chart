@@ -31,6 +31,10 @@ Once data is assigned to the three required fields, the chart will render automa
 **Important:** The **Frequency measure** must accurately represent the total number of observations ($N$). In Power BI, the most direct method is to count the rows of your fact table. This is done using a DAX measure like **`COUNTROWS(YourTable)`** or by simply using the default **Count** aggregation on any column that doesn't contain blanks (like a primary key), as this will return the row count for the current context.
 
 For example, suppose you're analyzing how many products are sold within specific price ranges. The **Product** table contains the *standard price*, and the **Sales** table stores the *quantity sold* (where each row is one sale). The `Sum of Quantity` should be used as the **Value** field to show total items sold. The **Frequency measure** should simply be the **Count of Sales**, which is correctly achieved with a `COUNTROWS(Sales)` measure or the default **Count** on the primary key. This works because the number of bins should be based on the number of sales, and each row is a sale.
+
+[![Visualization of sales quantities grouped by standard price bins](assets/example_01.gif)](assets/example_01.gif)
+
+
 > ⚠️ **Note:** The visual does **not** validate or enforce that the selected Frequency measure is appropriate. Using an incorrect measure may lead to incorrect results.
 
 ### **Configuring and Formatting Your Chart**
