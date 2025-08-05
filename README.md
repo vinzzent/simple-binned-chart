@@ -2,6 +2,7 @@
 ### **EasyBinner: a Power BI histogram-like custom visual**
 - [**EasyBinner: a Power BI histogram-like custom visual**](#easybinner-a-power-bi-histogram-like-custom-visual)
 - [**Core Purpose: Flexible and Accessible Data Binning**](#core-purpose-flexible-and-accessible-data-binning)
+- [**EasyBinner: Precision in Every Bin**](#easybinner-precision-in-every-bin)
 - [**Deeper Dive: An Aggregation-Focused Architecture**](#deeper-dive-an-aggregation-focused-architecture)
   - [**Data Model**](#data-model)
   - [**Processing Logic**](#processing-logic)
@@ -25,6 +26,16 @@ The primary purpose of this chart is to address a common challenge in Power BI: 
   * **When Authoring Reports Online**: In online report editing environments, users often face limited binning and aggregation options. Many built-in or AppSource visuals focus mainly on frequency histograms or have complex features that don’t directly support flexible binning. This visual addresses these gaps by performing all binning and aggregation client-side within the browser, enabling scenarios like grouping individuals by age ranges and displaying the average number of doctor visits per group.
 
 This solution empowers analysts by bringing complex binning logic to the front end in a simple, interactive package. It is subject to Power BI’s custom visual data limits (30,000 data points). For datasets within this threshold, it offers a flexible alternative to modeling. For large or high-cardinality datasets, performance depends on service capabilities and hardware; in such cases, back-end aggregation may be preferable.
+
+---
+
+### **EasyBinner: Precision in Every Bin**
+
+Most histogram visuals prioritize "polished" axes over precision, tweaking your input to fit their internal algorithms. EasyBinner takes a different approach—built from the ground up to respect your binning settings with absolute accuracy.
+
+Powered by D3’s binning framework, EasyBinner adds custom logic to ensure your **bin size** or **bin count** is followed exactly. Specify 12 bins? You’ll get 12—no rounding, no adjustments, no surprises.
+
+Where other visuals treat your settings as a hint, EasyBinner treats them as the rule.
 
 ---
 

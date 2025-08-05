@@ -9,12 +9,12 @@
       "displayName": "Value",
       "name": "measure",
       "kind": "Measure"
-    }, 
-     {
+    },
+    {
       "displayName": "Frequency measure",
       "name": "countMeasure",
       "kind": "Measure"
-    },      
+    },
     {
       "displayName": "Extra Tooltip",
       "name": "tooltips",
@@ -31,7 +31,7 @@
           "measure": {
             "max": 1
           },
-          "countMeasure": {            
+          "countMeasure": {
             "max": 1
           },
           "tooltips": {
@@ -43,6 +43,11 @@
         "categories": {
           "for": {
             "in": "category"
+          },
+          "dataReductionAlgorithm": {
+            "top": {
+              "count": 30000
+            }
           }
         },
         "values": {
@@ -62,11 +67,11 @@
                 "to": "tooltips"
               }
             }
-          ]
+          ]        
         }
       }
     }
-  ],  
+  ],
   "objects": {
     "bins": {
       "displayName": "Bins",
@@ -159,26 +164,50 @@
           }
         },
         "valuesCalculation": {
-            "displayName": "Value calculation",
-            "type": {
-                "enumeration": [
-                    { "displayName": "Sum", "value": "sum" },
-                    { "displayName": "Weighted average", "value": "weightedAvg" },
-                    { "displayName": "Minimun", "value": "minimun" },
-                    { "displayName": "Maximun", "value": "maximun" }
-                ]
-            }
+          "displayName": "Value calculation",
+          "type": {
+            "enumeration": [
+              {
+                "displayName": "Sum",
+                "value": "sum"
+              },
+              {
+                "displayName": "Weighted average",
+                "value": "weightedAvg"
+              },
+              {
+                "displayName": "Minimun",
+                "value": "minimun"
+              },
+              {
+                "displayName": "Maximun",
+                "value": "maximun"
+              }
+            ]
+          }
         },
         "tooltipCalculation": {
-            "displayName": "Tooltip calculation",
-            "type": {
-                "enumeration": [
-                    { "displayName": "Sum", "value": "sum" },
-                    { "displayName": "Weighted average", "value": "weightedAvg" },
-                    { "displayName": "Minimun", "value": "minimun" },
-                    { "displayName": "Maximun", "value": "maximun" }
-                ]
-            }
+          "displayName": "Tooltip calculation",
+          "type": {
+            "enumeration": [
+              {
+                "displayName": "Sum",
+                "value": "sum"
+              },
+              {
+                "displayName": "Weighted average",
+                "value": "weightedAvg"
+              },
+              {
+                "displayName": "Minimun",
+                "value": "minimun"
+              },
+              {
+                "displayName": "Maximun",
+                "value": "maximun"
+              }
+            ]
+          }
         },
         "yTickFontFamily": {
           "displayName": "Y tick font",
