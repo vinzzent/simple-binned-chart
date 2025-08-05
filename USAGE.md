@@ -15,7 +15,7 @@ Welcome to the EasyBinner! This guide will walk you through everything you need 
 
 Let's dive in!
 
------
+---
 
 ### **Getting Started: Setting Up Your Chart**
 
@@ -37,7 +37,7 @@ For example, suppose you're analyzing how many products are sold within specific
 
 You can customize various aspects of your binning logic, calculation logic, and the visual appearance of your chart. These settings are available under the **Format visual** tab in the Visualizations pane within Power BI.
 
------
+---
 
 #### **Bins**
 
@@ -52,7 +52,7 @@ This section controls how your data is grouped and how the X-axis (the horizonta
       * **Bin range:** Displays the full range (e.g., "0 - 10", "10 - 20") centered under each bar.
   * **Font:** Customize the appearance of the X-axis labels, including font family, size, and style (bold/italic).
 
------
+---
 
 #### **Bars**
 
@@ -87,7 +87,7 @@ This section lets you format the bars and their corresponding data labels.
 
 This visual's design prioritizes performance by operating on pre-summarized data from the Power BI model. Consequently, it cannot execute holistic calculations like **median** and **percentiles**, as these require access to the entire raw data **within the visual itself** for sorting and analysis. This limitation is a deliberate architectural trade-off, ensuring it remains lightweight and responsive.
 
------
+---
 
 #### **Line (Normal Curve)**
 

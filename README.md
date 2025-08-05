@@ -9,23 +9,24 @@
 - [**Benefits to Users**](#benefits-to-users)
 - [**Target Audience**](#target-audience)
 - [**Usage Guide**](#usage-guide)
+- [**License**](#license)
 
 
------
+---
 
 ### **Core Purpose: Flexible and Accessible Data Binning**
 
-The primary goal of this chart is to solve a common challenge in Power BI: how to easily group data without modifying the back-end data model. The visual performs all binning and aggregation logic on the front end, operating entirely within the secure, sandboxed iframe provided by the Power BI host. This approach is especially useful in several scenarios:
+The primary purpose of this chart is to address a common challenge in Power BI: grouping numeric data into equal-sized ranges without altering the underlying data model. All binning and aggregation logic is executed on the front end, running entirely within the secure, sandboxed iframe environment provided by Power BI. This design makes the visual particularly valuable in several scenarios:
 
   * **When the Data Model is Locked**: Report creators often use certified datasets or live connections, where they lack permissions to create calculated tables or columns. This visual offers a powerful alternative by performing all calculations client-side.
 
   * **To Avoid Data Model Complexity**: While DAX allows binning in Power BI Desktop, creating calculated tables can be complex. This visual simplifies the process by handling binning logic directly.
 
-  * **When Authoring Reports Online**: In online report editing environments, users often face limited binning and aggregation options. Many built-in or AppSource visuals focus mainly on frequency histograms or have complex features that don’t directly support flexible binning. This visual addresses these gaps by performing all binning and aggregation client-side within the browser, allowing you to group individuals by age ranges and display the average number of doctor visits per bin.
+  * **When Authoring Reports Online**: In online report editing environments, users often face limited binning and aggregation options. Many built-in or AppSource visuals focus mainly on frequency histograms or have complex features that don’t directly support flexible binning. This visual addresses these gaps by performing all binning and aggregation client-side within the browser, enabling scenarios like grouping individuals by age ranges and displaying the average number of doctor visits per group.
 
 This solution empowers analysts by bringing complex binning logic to the front end in a simple, interactive package. It is subject to Power BI’s custom visual data limits (30,000 data points). For datasets within this threshold, it offers a flexible alternative to modeling. For large or high-cardinality datasets, performance depends on service capabilities and hardware; in such cases, back-end aggregation may be preferable.
 
------
+---
 
 ### **Deeper Dive: An Aggregation-Focused Architecture**
 
@@ -48,7 +49,7 @@ Upon receiving the DataView object from Power BI, the visual uses D3.js to:
 
 This approach enables direct visualization of aggregated business measures across a numeric scale.
 
------
+---
 
 ### **Key Capabilities**
 
@@ -70,7 +71,7 @@ This approach enables direct visualization of aggregated business measures acros
 
   * **Built for Accessibility & Security**: Includes keyboard navigation, ARIA attributes, and no external calls (empty `privileges` array).
 
------
+---
 
 ### **Benefits to Users**
 
@@ -78,7 +79,7 @@ This approach enables direct visualization of aggregated business measures acros
   * **Accelerate Data Exploration**: Try different binning strategies instantly, with no data model changes.
   * **Enhance Statistical Storytelling**: Blend flexible binning with a normal curve for richer narratives.
 
------
+---
 
 ### **Target Audience**
 
@@ -86,8 +87,17 @@ This approach enables direct visualization of aggregated business measures acros
   * **BI Professionals**: Who seek efficient tools to present complex summaries.
   * **Citizen Data Scientists**: Who want intuitive ways to compare data against theoretical distributions.
 
------
+---
 
 ### **Usage Guide**
 
 For step-by-step instructions on configuring and using the EasyBinner, see the [Usage Guide](USAGE.md).
+
+---
+
+### **License**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> See the [LICENSE](./LICENSE) file for details and attribution.  
+> See [LICENSE-DATA.md](./LICENSE-DATA.md) for sample dataset licenses and attributions.

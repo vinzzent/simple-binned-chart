@@ -1,7 +1,30 @@
 {
-    "name": "visual",
-    "version": "1.0.0",
-    "scripts": {
+"name": "easybinner",
+  "version": "1.0.0",
+  "description": "A custom Power BI visual for binning and visualizing distributions with support for pre-binned data.",
+  "license": "MIT",
+  "author": {
+    "name": "Vincent Roland von Borries Conca",
+    "email": "vvborries@gmail.com",
+    "url": "https://github.com/vinzzent"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com//vinzzent/simple-binned-chart.git"
+  },
+  "bugs": {
+    "url": "https://github.com//vinzzent/simple-binned-chart/issues"
+  },
+  "homepage": "https://github.com/vinzzent/simple-binned-chart#readme",
+  "keywords": [
+    "powerbi",
+    "visual",
+    "custom visual",
+    "binned chart",
+    "histogram",
+    "distribution",
+    "d3"
+  ],    "scripts": {
         "pbiviz": "pbiviz",
         "start": "pbiviz start",
         "package": "pbiviz package",
