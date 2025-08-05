@@ -857,8 +857,11 @@ function createLandingPage(): Element {
     subheader.className = "LandingPageSubheader";
     const p1 = document.createElement("p");
     p1.textContent = "Please assign fields to all three roles: 'Field to bin', 'Frequency measure', and 'Value'. Reusing the same field or measure across multiple roles is allowed.";
-    p1.className = "LandingPageHelpText";
-    const docLink = document.createElement("a"); docLink.href = "https://github.com/vinzzent/simple-binned-chart#readme";
+    p1.className = "LandingPageHelpText";    
+    const docLink = document.createElement("a");
+    docLink.href = "https://github.com/vinzzent/simple-binned-chart#readme";
+    docLink.target = "_blank";
+    docLink.rel = "noopener noreferrer";
     docLink.textContent = "Documentation";
     docLink.style.display = "block";
     docLink.style.textAlign = "center";
