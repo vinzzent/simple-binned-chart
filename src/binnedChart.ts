@@ -86,7 +86,7 @@ export class BinnedChart implements IVisual {
     private events: IVisualEventService;
     private categories?: powerbi.DataViewCategoryColumn;
     private values?: powerbi.DataViewValueColumn;
-    private countMeasure?: powerbi.DataViewValueColumn;    
+    private countMeasure?: powerbi.DataViewValueColumn;
     private tooltipData?: powerbi.DataViewValueColumn;
     private formatters?: {
         forCategory: Formatter,
@@ -258,33 +258,79 @@ export class BinnedChart implements IVisual {
             d3.max(preBinnedData, d => d.binValue) as number
         ];
 
-        // --- Step 1: Determine number of bins (if not using fixed size) ---
+        // --- Step 1: Initialize binning parameters and constants
         const binMode = this.formattingSettings.bins.binMode.value;
         const [minDomain, maxDomain] = dataDomain; // Use destructuring for clarity
-        let numBins: number | undefined;
+        let numBins: number;
+        let binSize: number;
 
-        if (binMode === "automatic") {
-            // Sturges' formula for a good default number of bins
-            const N = d3.sum(preBinnedData, d => d.countValue);
-            numBins = Math.max(1, Math.ceil(Math.log2(N) + 1));
-        } else if (binMode === "byCount") {
-            numBins = this.formattingSettings.bins.numberOfBins.value;
+        // --- Define constants for clarity and easy maintenance ---
+        const MAX_BINS = 1000;
+        const DEFAULT_FALLBACK_BINS = 10;
+        const domainRange = maxDomain - minDomain;
+
+        // --- Step 2: Calculate bin size based on a user-defined size, a user-defined count, or an automatic count ---   
+        switch (binMode) {
+            case "automatic": {
+                const N = d3.sum(preBinnedData, d => d.countValue);
+                // Sturges' formula for a good default number of bins
+                numBins = Math.max(1, Math.ceil(Math.log2(N) + 1));
+                binSize = domainRange / numBins;
+                break;
+            }
+
+            case "byCount": {
+                numBins = this.formattingSettings.bins.numberOfBins.value;
+                // Ensure numBins is at least 1 to avoid division by zero
+                if (numBins < 1) {
+                    numBins = 1;
+                }
+                binSize = domainRange / numBins;
+                break;
+            }
+
+            case "bySize": {
+                const userBinSize = this.formattingSettings.bins.binSize.value;
+                const isUserBinSizeValid = typeof userBinSize === 'number' && isFinite(userBinSize) && userBinSize > 0;
+                const estimatedBins = isUserBinSizeValid ? (domainRange / userBinSize!) : Infinity;
+
+                // Use the user's value if it's valid and results in a reasonable number of bins
+                if (isUserBinSizeValid && estimatedBins <= MAX_BINS) {
+                    binSize = userBinSize!;
+                    numBins = Math.ceil(estimatedBins);
+                } else {
+                    // Otherwise, fall back to a default bin count
+                    numBins = DEFAULT_FALLBACK_BINS;
+                    binSize = domainRange / numBins;
+
+                    // Show a warning only if the user provided a number that we had to override
+                    if (isUserBinSizeValid) {
+                        this.host.displayWarningIcon?.(
+                            "Bin size too small",
+                            "The bin size you selected is too small. The visual has automatically adjusted to a standard bin size."
+                        );
+                    }
+                }
+                break;
+            }
+            default: {
+                // As a safe fallback for any unexpected binMode, use the 'automatic' logic
+                console.warn(`Unknown binMode: '${binMode}'. Defaulting to 'automatic'.`);
+                const N = d3.sum(preBinnedData, d => d.countValue);
+                numBins = Math.max(1, Math.ceil(Math.log2(N) + 1));
+                binSize = domainRange / numBins;
+                break;
+            }
         }
-
-        // --- Step 2: Calculate initial binSize ---
-        // For 'bySize', it's set directly. For others, it's based on numBins.
-        let binSize = (binMode === "bySize")
-            ? this.formattingSettings.bins.binSize.value
-            : (maxDomain - minDomain) / numBins!;
 
         // --- Step 3: Align domain and recalculate binSize for 'byCount' ---
         // Round the domain outwards to multiples of the binSize for cleaner axes.
         const alignedMin = Math.floor(minDomain / binSize) * binSize;
         const alignedMax = Math.ceil(maxDomain / binSize) * binSize;
 
-        // To ensure the user gets the *exact* number of bins they asked for in 'byCount' mode,
+        // To ensure the user gets the *exact* number of bins they asked for in 'byCount' and calculate in 'automatic' mode,
         // we recalculate the binSize based on the newly aligned domain.
-        if (binMode === "byCount") {
+        if (binMode === "byCount" || binMode === "automatic") {
             binSize = (alignedMax - alignedMin) / numBins!;
         }
 
@@ -680,10 +726,10 @@ export class BinnedChart implements IVisual {
                 const midPoint = d.x;
                 const expectedValue = d.y;
                 return [
-                    { displayName: "Mean", value: this.formatters.forMeasure.format(mean) },
-                    { displayName: "Standard Deviation", value: this.formatters.forMeasure.format(stdDev) },
+                    { displayName: "General Mean", value: this.formatters.forMeasure.format(mean) },
+                    { displayName: "General Std Dev", value: this.formatters.forMeasure.format(stdDev) },
                     { displayName: "Bin Midpoint", value: this.formatters.forCategory.format(midPoint) },
-                    { displayName: "Expected Value", value: this.formatters.forMeasure.format(expectedValue) }
+                    { displayName: "Fitted Normal Value", value: this.formatters.forMeasure.format(expectedValue) }
                 ];
             }
         );
@@ -737,7 +783,7 @@ export class BinnedChart implements IVisual {
     private showLandingPage() {
         if (!this.isLandingPageOn) {
             this.isLandingPageOn = true;
-            const landingPageElement = createLandingPage();
+            const landingPageElement = createLandingPage(this.host);
             this.element.appendChild(landingPageElement);
             this.LandingPage = d3Select(landingPageElement);
         }
@@ -840,44 +886,54 @@ function syncSelectionState(selection: d3.Selection<d3.BaseType, BinnedDataPoint
 // #region LANDING PAGE
 
 // Returns a div with a logo, titles, instructions, and links for empty data display.
-function createLandingPage(): Element {
+function createLandingPage(host: IVisualHost): Element {
     const div = document.createElement("div");
+    div.className = "landingPageContainer";
+
+    // Logo
     const logo = document.createElement("img");
     const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 800 800"><path d="M27.517 256.55h214.13V786H27.517V256.55zM293.37 36.579H507.5v749.42H293.37V36.579zM558.18 526.13h214.13V786H558.18V526.13z" fill="#77bef0"/><path d="M12 783.3C225.78 563.45 269.92 13.39 403.02 14.83S574.05 567.64 793 777.19" fill="none" stroke="#ff894f" stroke-width="20"/></svg>`;
-    const encodedSvg = encodeURIComponent(svgString);
-    logo.src = `data:image/svg+xml;utf8,${encodedSvg}`;
+    logo.src = `data:image/svg+xml;utf8,${encodeURIComponent(svgString)}`;
     logo.alt = "Visual logo";
-    logo.style.display = "block";
-    logo.style.margin = "20px auto";
+    logo.className = "landingPageLogo";
+    div.appendChild(logo);
+
+    // Header
     const header = document.createElement("h1");
     header.textContent = "EasyBinner";
     header.className = "LandingPageHeader";
+    div.appendChild(header);
+
+    // Subheader
     const subheader = document.createElement("h2");
     subheader.textContent = "By Concacore Labs";
     subheader.className = "LandingPageSubheader";
+    div.appendChild(subheader);
+
+    // Help text
     const p1 = document.createElement("p");
     p1.textContent = "Please assign fields to all three roles: 'Field to bin', 'Frequency measure', and 'Value'. Reusing the same field or measure across multiple roles is allowed.";
-    p1.className = "LandingPageHelpText";    
-    const docLink = document.createElement("a");
-    docLink.href = "https://github.com/vinzzent/simple-binned-chart#readme";
-    docLink.target = "_blank";
-    docLink.rel = "noopener noreferrer";
-    docLink.textContent = "Documentation";
-    docLink.style.display = "block";
-    docLink.style.textAlign = "center";
-    docLink.style.marginTop = "30px";
+    p1.className = "LandingPageHelpText";
+    div.appendChild(p1);
+
+    // Documentation button
+    const docButton = document.createElement("button");
+    docButton.className = "landingPageLinkButton";
+    docButton.textContent = "Documentation";
+    docButton.onclick = () => host.launchUrl("https://github.com/vinzzent/simple-binned-chart#readme");
+    div.appendChild(docButton);
+
+
+    // Contact link
     const contactLink = document.createElement("a");
     contactLink.href = "mailto:vvborries@gmail.com";
     contactLink.textContent = "Contact";
-    contactLink.style.display = "block";
-    contactLink.style.textAlign = "center";
+    contactLink.title = "Ctrl+Click to open your default email client";
+    contactLink.className = "landingPageLinkButton";
+    contactLink.style.display = "block";  // to keep layout consistent
     contactLink.style.marginTop = "10px";
-    div.appendChild(logo);
-    div.appendChild(header);
-    div.appendChild(subheader);
-    div.appendChild(p1);
-    div.appendChild(docLink);
     div.appendChild(contactLink);
+
     return div;
 }
 

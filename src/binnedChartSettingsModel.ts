@@ -26,14 +26,14 @@ class BinsSettingsCard extends Card {
         value: 10,
         options: {
             minValue: { type: powerbi.visuals.ValidatorType.Min, value: 1 },
-            maxValue: { type: powerbi.visuals.ValidatorType.Max, value: 50 }
+            maxValue: { type: powerbi.visuals.ValidatorType.Max, value: 1000 }
         }
     });
 
     binSize = new NumUpDown({
         name: "binSize",
         displayName: "Bin size",
-        value: 30,
+        value: NaN,
         options: {
             minValue: { type: powerbi.visuals.ValidatorType.Min, value: 0.01 }
         }
