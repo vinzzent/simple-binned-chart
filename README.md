@@ -31,11 +31,9 @@ This solution empowers analysts by bringing complex binning logic to the front e
 
 ### **EasyBinner: Precision in Every Bin**
 
-Most histogram visuals prioritize polished axes and styling with rounded, human-friendly bin edges, often relying on D3’s automatic “nice” scaling. As a result, they tend to treat your exact bin count or size as a preference rather than a strict rule to maintain cleaner, easier-to-read charts.
+Most histogram visuals prioritize polished styling and rounded, human-friendly bin edges using D3’s automatic “nice” scaling. This often treats your exact bin count or size as a suggestion, favoring readability over precision.
 
-EasyBinner takes a different approach—built from the ground up to enforce your binning settings with absolute precision while maintaining a clean, readable scale.
-
-It balances precision and aesthetics by carefully aligning the binning calculations to respect both your exact bin settings and the need for visually clear scales.
+EasyBinner takes a different approach—enforcing your exact bin settings with precision while bringing together accuracy and visual clarity in a clean, readable scale.
 
 Specify 12 bins? You get exactly 12—no rounding, no surprises.
 
@@ -68,13 +66,13 @@ This approach enables direct visualization of aggregated business measures acros
 
 ### **Key Capabilities**
 
-  * **True Binned Chart Functionality**: this chart can plot any aggregated measure on the Y-axis. You might use it to display how water consumption varies by household size or to explore device failure rates by operating temperature.
+  * **True Binned Chart Functionality**: this chart can plot any aggregated numeric measure on the Y-axis. You might use it to display how water consumption varies by household size or to explore device failure rates by operating temperature.
 
   * **Effortless Equal-Width Bin Generation**:
 
-      * *Automatic*: Uses Sturges' formula, which requires the sample size (N) to estimate the number of bins.
-      * *By Count*: User defines the number of bins.
-      * *By Size*: User sets a fixed width for each bin.
+      * *Automatic*: Calculates bin count using Sturges' formula, treating the frequency measure as *N*.
+      * *By Count*: User specifies the desired number of bins.
+      * *By Size*: User defines a fixed bin width.
 
   * **Statistical Context with Normal Curve**: An optional overlay shows a normal distribution curve, based on the mean and standard deviation of the data. The curve’s appearance is customizable.
 
