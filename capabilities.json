@@ -176,12 +176,12 @@
                 "value": "weightedAvg"
               },
               {
-                "displayName": "Minimun",
-                "value": "minimun"
+                "displayName": "Minimum",
+                "value": "minimum"
               },
               {
-                "displayName": "Maximun",
-                "value": "maximun"
+                "displayName": "Maximum",
+                "value": "maximum"
               }
             ]
           }
@@ -199,12 +199,12 @@
                 "value": "weightedAvg"
               },
               {
-                "displayName": "Minimun",
-                "value": "minimun"
+                "displayName": "Minimum",
+                "value": "minimum"
               },
               {
-                "displayName": "Maximun",
-                "value": "maximun"
+                "displayName": "Maximum",
+                "value": "maximum"
               }
             ]
           }
