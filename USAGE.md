@@ -1,6 +1,6 @@
 
+![EasyBinner Logo](./assets/logo.svg)
 ### **EasyBinner: Usage**
-
 - [**EasyBinner: Usage**](#easybinner-usage)
 - [**Getting Started: Setting Up Your Chart**](#getting-started-setting-up-your-chart)
 - [**Configuring and Formatting Your Chart**](#configuring-and-formatting-your-chart)
@@ -9,7 +9,6 @@
   - [**Important Considerations for Value Calculation**](#important-considerations-for-value-calculation)
   - [**Line (Normal Curve)**](#line-normal-curve)
 - [**Interacting with Your Chart**](#interacting-with-your-chart)
-
 
 Welcome to the EasyBinner! This guide will walk you through everything you need to know to turn your data into powerful, insightful histograms. This visual is designed to group (or "bin") your numeric data on the fly, allowing you to analyze aggregated values like frequencies, averages, sums, minimums, or maximums across different ranges without ever needing to modify your underlying data model.
 
@@ -38,7 +37,6 @@ For the **Frequency measure**, use the **Count of Sales**, which corresponds to 
 This is appropriate because the number of bins is based on the number of **sales**, and each sale is represented by a single row in the **Sales** table — making the count of rows a valid frequency (N) for binning purposes.
 
 [![Visualization of sales quantities grouped by standard price bins](assets/example_01.gif)](assets/example_01.gif)
-
 
 > ⚠️ **Note:** The visual does **not** validate or enforce that the selected Frequency measure is appropriate. Using an incorrect measure may lead to incorrect results.
 

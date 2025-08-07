@@ -1,4 +1,4 @@
-![Logo](./assets/logo.svg)
+![EasyBinner Logo](./assets/logo.svg)
 ### **EasyBinner: a Power BI histogram-like custom visual**
 - [**EasyBinner: a Power BI histogram-like custom visual**](#easybinner-a-power-bi-histogram-like-custom-visual)
 - [**Core Purpose: Flexible and Accessible Data Binning**](#core-purpose-flexible-and-accessible-data-binning)
