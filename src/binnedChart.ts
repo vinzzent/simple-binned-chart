@@ -17,7 +17,7 @@ import { BinnedChartSettingsModel } from "./binnedChartSettingsModel";
 import "./../style/visual.less";
 
 // Imports Power BI visual interfaces and types used for visual construction, updates, interactivity, and events
-import IVisual = powerbi.extensibility.IVisual;
+import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
